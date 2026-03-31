@@ -1,4 +1,4 @@
-const CACHE = 'packtrack-v1';
+const CACHE = 'packtrack-v3';
 const ASSETS = [
   './packtrack-mobile.html',
   './manifest.json'
