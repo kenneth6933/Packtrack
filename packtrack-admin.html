@@ -1,0 +1,646 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PackTrack Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;
+  --text:#e6edf3;--muted:#7d8590;--accent:#f0883e;--accent-bg:rgba(240,136,62,.12);
+  --green:#3fb950;--green-bg:rgba(63,185,80,.1);--red:#f85149;--red-bg:rgba(248,81,73,.1);
+  --blue:#79c0ff;--blue-bg:rgba(121,192,255,.1);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',system-ui,sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--sans);background:var(--bg);color:var(--text)}
+.hidden{display:none!important}
+input,select,textarea{font-family:var(--sans);font-size:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);outline:none;transition:border-color .15s;width:100%}
+input:focus,select:focus,textarea:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px}
+.field{margin-bottom:14px}
+.btn{font-family:var(--sans);font-size:13px;font-weight:700;border:none;border-radius:8px;cursor:pointer;transition:all .15s;padding:8px 16px;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{opacity:.87}.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--accent);color:#000}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:6px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:12px}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+#login-view{height:100vh;display:flex;align-items:center;justify-content:center}
+.login-card{width:400px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px;position:relative}
+.login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent);border-radius:16px 16px 0 0}
+.login-tag{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:4px;text-transform:uppercase;margin-bottom:8px}
+.login-title{font-size:24px;font-weight:800;margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:28px}
+.alert{padding:10px 14px;border-radius:8px;font-size:13px;margin-top:12px;background:var(--red-bg);border:1px solid rgba(248,81,73,.3);color:var(--red)}
+#admin-view{display:none;height:100vh;flex-direction:row}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:100vh}
+.sb-brand{padding:20px 18px;border-bottom:1px solid var(--border)}
+.sb-tag{font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:3px;text-transform:uppercase}
+.sb-name{font-size:16px;font-weight:800;margin-top:3px}
+.sb-company{font-size:11px;color:var(--muted);margin-top:2px}
+.sb-menu{flex:1;padding:10px 8px;overflow-y:auto}
+.sm-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);transition:all .15s;margin-bottom:2px;user-select:none}
+.sm-item:hover{background:var(--surface2);color:var(--text)}
+.sm-item.active{background:var(--accent-bg);color:var(--accent)}
+.sm-icon{width:18px;text-align:center;font-size:15px}
+.sb-footer{padding:10px 8px;border-top:1px solid var(--border)}
+.sm-logout{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);background:none;border:none;width:100%;font-family:var(--sans);text-align:left;transition:all .15s}
+.sm-logout:hover{background:var(--red-bg);color:var(--red)}
+.main-area{flex:1;overflow-y:auto;height:100vh}
+.main-inner{padding:32px 36px;max-width:1200px}
+.pc-panel{display:none}
+.pc-panel.active{display:block}
+.page-header{margin-bottom:24px;display:flex;align-items:flex-end;justify-content:space-between}
+.page-header h1{font-size:24px;font-weight:800}
+.page-header p{font-size:13px;color:var(--muted);margin-top:3px}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.card-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-header h3{font-size:14px;font-weight:700}
+.card-body{padding:20px}
+.stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:24px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px}
+.stat.featured{border-color:rgba(240,136,62,.4);background:var(--accent-bg)}
+.stat-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:8px}
+.stat-value{font-family:var(--mono);font-size:28px;font-weight:700}
+.stat-value.accent{color:var(--accent)}
+.stat-value.green{color:var(--green)}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{background:var(--surface2);padding:10px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 16px;font-size:13px;border-bottom:1px solid rgba(48,54,61,.4);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(33,38,45,.5)}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:11px;font-weight:700}
+.badge-pack{background:var(--green-bg);color:var(--green);border:1px solid rgba(63,185,80,.3)}
+.badge-wt{background:var(--accent-bg);color:var(--accent);border:1px solid rgba(240,136,62,.3)}
+.badge-inactive{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,.3)}
+.emp-av{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--accent-bg);border:1px solid rgba(240,136,62,.3);font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent);margin-right:8px;vertical-align:middle;flex-shrink:0}
+.modal-bg{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;align-items:center;justify-content:center;padding:20px}
+.modal-bg.open{display:flex}
+.modal{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;position:relative}
+.modal h2{font-size:20px;font-weight:800;margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:22px}
+.modal-close{position:absolute;top:16px;right:16px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:14px;transition:all .15s}
+.modal-close:hover{color:var(--text);border-color:var(--muted)}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;padding-top:16px;border-top:1px solid var(--border)}
+.section-sep{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--accent);margin:18px 0 10px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.sal-filters{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px}
+.sal-field{flex:1;min-width:140px}
+.sal-result{background:var(--accent-bg);border:1px solid rgba(240,136,62,.3);border-radius:12px;padding:20px 24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+.sr-info h3{font-size:18px;font-weight:800}
+.sr-info p{font-size:13px;color:var(--muted);margin-top:3px}
+.sr-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.sr-total-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px}
+.sr-total{font-family:var(--mono);font-size:32px;font-weight:700;color:var(--accent)}
+.drop-zone{border:2px dashed var(--border);border-radius:10px;padding:30px;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:14px}
+.drop-zone:hover{border-color:var(--accent);background:var(--accent-bg)}
+.drop-zone p{font-size:13px;color:var(--muted);margin-top:6px}
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:999}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;margin-top:8px;display:flex;align-items:center;gap:8px;transform:translateY(20px);opacity:0;transition:all .25s;min-width:260px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.t-success{border-left:3px solid var(--green)}
+.toast.t-error{border-left:3px solid var(--red)}
+::-webkit-scrollbar{width:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+.search-bar{position:relative;margin-bottom:16px}
+.search-bar input{padding-left:36px;background:var(--surface2)}
+.search-icon{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--muted);font-size:14px;pointer-events:none}
+</style>
+</head>
+<body>
+
+<div id="loading">
+  <div class="spinner"></div>
+  <div style="font-size:12px;color:var(--muted);font-family:var(--mono)">PACKTRACK ADMIN</div>
+</div>
+
+<div id="login-view" class="hidden">
+  <div class="login-card">
+    <div class="login-tag">PackTrack Admin</div>
+    <h1 class="login-title">Admin Login</h1>
+    <p class="login-sub">K&H Wholesale Trading</p>
+    <div class="field"><label>Username / ID</label><input type="text" id="l-user" placeholder="ADMIN" autocomplete="off"></div>
+    <div class="field"><label>Password</label><input type="password" id="l-pass" placeholder="••••••"></div>
+    <button class="btn btn-primary" style="width:100%;padding:11px" onclick="doLogin()">Sign In</button>
+    <div id="l-err" class="alert hidden"></div>
+  </div>
+</div>
+
+<div id="admin-view">
+  <div class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-tag">PackTrack</div>
+      <div class="sb-name">Admin Panel</div>
+      <div class="sb-company">K&H Wholesale Trading</div>
+    </div>
+    <div class="sb-menu">
+      <div class="sm-item active" onclick="goTab('dashboard',this)"><span class="sm-icon">◈</span>Dashboard</div>
+      <div class="sm-item" onclick="goTab('employees',this)"><span class="sm-icon">◎</span>Employees</div>
+      <div class="sm-item" onclick="goTab('products',this)"><span class="sm-icon">▦</span>Products</div>
+      <div class="sm-item" onclick="goTab('prices',this)"><span class="sm-icon">◆</span>Work Type Prices</div>
+      <div class="sm-item" onclick="goTab('salary',this)"><span class="sm-icon">◇</span>Salary Report</div>
+      <div class="sm-item" onclick="goTab('records',this)"><span class="sm-icon">≡</span>All Records</div>
+    </div>
+    <div class="sb-footer">
+      <button class="sm-logout" onclick="doLogout()">↩ Logout</button>
+    </div>
+  </div>
+  <div class="main-area">
+    <div class="main-inner">
+
+      <div id="tab-dashboard" class="pc-panel active">
+        <div class="page-header"><div><h1>Dashboard</h1><p>Packaging department overview</p></div></div>
+        <div class="stats-row" id="dash-stats"></div>
+        <div class="card">
+          <div class="card-header"><h3>Recent Records</h3></div>
+          <div class="tbl-wrap">
+            <table><thead><tr><th>Employee</th><th>Product</th><th>Work Type</th><th>Qty</th><th>Rate</th><th>Earnings</th><th>Date</th></tr></thead>
+            <tbody id="dash-recent"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-employees" class="pc-panel">
+        <div class="page-header">
+          <div><h1>Employees</h1><p>Packaging department staff</p></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-ghost" onclick="openEmpImportModal()">↑ Import CSV</button>
+            <button class="btn btn-primary" onclick="openEmpModal()">+ Add Employee</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Staff List</h3><span id="emp-count" style="font-size:12px;color:var(--muted)"></span></div>
+          <div class="tbl-wrap">
+            <table><thead><tr><th>Name</th><th>ID</th><th>Password</th><th>Status</th><th>Records</th><th></th></tr></thead>
+            <tbody id="emp-tbody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-products" class="pc-panel">
+        <div class="page-header">
+          <div><h1>Products</h1><p>Central product database (/products)</p></div>
+          <div style="display:flex;gap:8px">
+            <button class="btn btn-danger" onclick="clearAllProducts()" style="background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,.3)">✕ Clear All</button>
+            <button class="btn btn-ghost" onclick="openImportModal()">↑ Import CSV</button>
+            <button class="btn btn-primary" onclick="openProductModal()">+ Add Product</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Product List</h3><span id="prod-count" style="font-size:12px;color:var(--muted)"></span></div>
+          <div style="padding:14px 20px 0">
+            <div class="search-bar"><span class="search-icon">⌕</span><input type="text" id="prod-search" placeholder="Search by name or barcode..." oninput="filterProducts()"></div>
+          </div>
+          <div class="tbl-wrap">
+            <table><thead><tr><th>Barcode</th><th>Product Code</th><th>Product Name</th><th>Status</th><th></th></tr></thead>
+            <tbody id="prod-tbody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div id="tab-prices" class="pc-panel">
+        <div class="page-header"><div><h1>Work Type Prices</h1><p>Rate per piece (RM)</p></div></div>
+        <div class="card">
+          <div class="card-header"><h3>Current Prices</h3></div>
+          <div class="card-body">
+            <div id="prices-grid-admin"></div>
+            <div style="margin-top:20px;display:flex;justify-content:flex-end">
+              <button class="btn btn-primary" onclick="savePrices()">Save Prices</button>
+            </div>
+          </div>
+        </div>
+        <div style="background:var(--surface2);border:1px solid var(--border);border-radius:10px;padding:14px 18px;font-size:12px;color:var(--muted);line-height:2;font-family:var(--mono)">
+          PO=PACKING ONION | PK=PACKING KACANG | PG=PACKING GENERAL | S=SEALING | PB=PACKING IN BEG | W=WEIGHING | T=TAPE | TB=PACKING IN CTN | TM=TAPE WITH MACHINE | SP=SPECIAL CASE
+        </div>
+      </div>
+
+      <div id="tab-salary" class="pc-panel">
+        <div class="page-header"><div><h1>Salary Report</h1><p>Calculate earnings by employee and date range</p></div></div>
+        <div class="sal-filters">
+          <div class="sal-field"><label>Employee</label><select id="sal-emp"><option value="">All Employees</option></select></div>
+          <div class="sal-field"><label>From Date</label><input type="date" id="sal-from"></div>
+          <div class="sal-field"><label>To Date</label><input type="date" id="sal-to"></div>
+          <button class="btn btn-primary" onclick="calcSalary()" style="align-self:flex-end">Calculate</button>
+        </div>
+        <div id="sal-result"></div>
+      </div>
+
+      <div id="tab-records" class="pc-panel">
+        <div class="page-header"><div><h1>All Records</h1><p>Complete packaging work log</p></div></div>
+        <div class="sal-filters">
+          <div class="sal-field"><label>Employee</label><select id="rec-emp"><option value="">All</option></select></div>
+          <div class="sal-field"><label>Date</label><input type="date" id="rec-date"></div>
+          <div class="sal-field"><label>Work Type</label><select id="rec-wt"><option value="">All</option></select></div>
+          <button class="btn btn-ghost" onclick="loadRecords()">Filter</button>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Records</h3><span id="rec-count" style="font-size:12px;color:var(--muted)"></span></div>
+          <div class="tbl-wrap">
+            <table><thead><tr><th>Date</th><th>Employee</th><th>Product</th><th>Work Type</th><th>Qty</th><th>Rate</th><th>Earnings</th><th>Time</th></tr></thead>
+            <tbody id="rec-tbody"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="emp-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('emp-modal')">✕</button>
+    <h2 id="emp-modal-title">Add Employee</h2>
+    <p class="modal-sub">Packaging department employee</p>
+    <input type="hidden" id="emp-edit-key">
+    <div class="grid-2">
+      <div class="field"><label>Full Name</label><input type="text" id="emp-name" placeholder="ALI BIN HASSAN"></div>
+      <div class="field"><label>Employee ID</label><input type="text" id="emp-id" placeholder="V001" style="font-family:var(--mono)"></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>IC / Passport</label><input type="text" id="emp-ic" placeholder="900101-01-1234"></div>
+      <div class="field"><label>Password</label><input type="text" id="emp-pass" placeholder="Enter password" autocomplete="off" style="font-family:var(--mono)"></div>
+    </div>
+    <div class="field"><label>Status</label>
+      <select id="emp-active"><option value="true">Active</option><option value="false">Inactive</option></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('emp-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEmployee()">Save Employee</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="prod-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('prod-modal')">✕</button>
+    <h2 id="prod-modal-title">Add Product</h2>
+    <p class="modal-sub">Central products database (/products)</p>
+    <input type="hidden" id="prod-edit-key">
+    <div class="grid-2">
+      <div class="field"><label>Barcode</label><input type="text" id="p-barcode" placeholder="8993175542241" style="font-family:var(--mono)" inputmode="numeric"></div>
+      <div class="field"><label>Product Code</label><input type="text" id="p-code" placeholder="D153612" style="font-family:var(--mono)"></div>
+    </div>
+    <div class="field"><label>Product Name</label><input type="text" id="p-name" placeholder="NABATI PINK LAWA 38G"></div>
+    <div class="field"><label>Status</label>
+      <select id="p-active"><option value="true">Active</option><option value="false">Inactive</option></select>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('prod-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="import-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('import-modal')">✕</button>
+    <h2>Import Products</h2>
+    <p class="modal-sub">Upload CSV exported from Excel (one sheet at a time)</p>
+    <div class="drop-zone" onclick="document.getElementById('csv-file').click()">
+      <div style="font-size:30px;opacity:.3">↑</div>
+      <div style="font-size:14px;font-weight:700;margin-top:6px">Click to select CSV file</div>
+      <p>No, Code, Description, Barcode, NINSO CTN, PACKSIZE(Supplier), TOTAL PCS(Supplier), RP Unit, PACKSIZE(Ninso), TOTAL PCS(Ninso), PACKING MATERIAL</p>
+    </div>
+    <input type="file" id="csv-file" accept=".csv,.txt" class="hidden" onchange="handleCSV(this)">
+    <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:14px">No,Code,Description,Barcode,NINSO CTN,PACKSIZE(Supplier),TOTAL PCS(Supplier),RP Unit,PACKSIZE(Ninso),TOTAL PCS(Ninso),PACKING MATERIAL<br>1,D120012,RICHOCO NABATI BISC...,8993175535885,1,60,60,3,20,1,TAPE</div>
+    <div id="import-preview" class="hidden">
+      <div class="section-sep" id="import-count"></div>
+      <div id="import-preview-list" style="max-height:200px;overflow-y:auto;font-size:12px;font-family:var(--mono);color:var(--muted)"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('import-modal')">Cancel</button>
+      <button class="btn btn-primary hidden" id="import-btn" onclick="doImport()">Import Products</button>
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="emp-import-modal">
+  <div class="modal">
+    <button class="modal-close" onclick="closeModal('emp-import-modal')">✕</button>
+    <h2>Import Employees</h2>
+    <p class="modal-sub">Bulk add packaging staff from CSV</p>
+    <div class="drop-zone" onclick="document.getElementById('emp-csv-file').click()">
+      <div style="font-size:30px;opacity:.3">↑</div>
+      <div style="font-size:14px;font-weight:700;margin-top:6px">Click to select CSV file</div>
+      <p>Format: id, name, ic, password</p>
+    </div>
+    <input type="file" id="emp-csv-file" accept=".csv,.txt" class="hidden" onchange="handleEmpCSV(this)">
+    <div style="background:var(--surface2);border-radius:8px;padding:12px 14px;font-size:12px;color:var(--muted);font-family:var(--mono);margin-bottom:14px">id,name,ic,password<br>V001,LAI CHOON MEI,821025-04-5028,152082</div>
+    <div id="emp-import-preview" class="hidden">
+      <div class="section-sep" id="emp-import-count"></div>
+      <div id="emp-import-list" style="max-height:220px;overflow-y:auto;font-size:12px;font-family:var(--mono);color:var(--muted);line-height:1.9"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('emp-import-modal')">Cancel</button>
+      <button class="btn btn-primary hidden" id="emp-import-btn" onclick="doEmpImport()">Import Employees</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<script>
+const firebaseConfig={apiKey:"AIzaSyBdMdNTmGW3S-8Yld2XFSPpnbMtEnmaDaY",authDomain:"clockin-82306.firebaseapp.com",databaseURL:"https://clockin-82306-default-rtdb.asia-southeast1.firebasedatabase.app",projectId:"clockin-82306",storageBucket:"clockin-82306.firebasestorage.app",messagingSenderId:"1072015314964",appId:"1:1072015314964:web:e1d9b92d1c2afea84c9701"};
+firebase.initializeApp(firebaseConfig);
+const db=firebase.database();
+const WORK_TYPES=[{code:'PO',name:'PACKING ONION'},{code:'PK',name:'PACKING KACANG'},{code:'PG',name:'PACKING GENERAL'},{code:'S',name:'SEALING'},{code:'PB',name:'PACKING IN BEG'},{code:'W',name:'WEIGHING'},{code:'T',name:'TAPE'},{code:'TB',name:'PACKING IN CTN'},{code:'TM',name:'TAPE W/MACHINE'},{code:'SP',name:'SPECIAL CASE'}];
+const DEFAULT_PRICES={PO:0.040,PK:0.070,PG:0.040,S:0.020,PB:0.020,W:0.060,T:0.030,TB:0.010,TM:0.025,SP:0.000};
+let currentAdmin=null,allEmployees={},allProducts={},allRecords=[],prices=Object.assign({},DEFAULT_PRICES),importData=[];
+const fmt=n=>'RM '+parseFloat(n||0).toFixed(2);
+const getToday=()=>new Date().toISOString().slice(0,10);
+async function init(){
+  try{const p=await db.ref('packtrack/settings/prices').get();if(p.exists())prices=p.val();else await db.ref('packtrack/settings/prices').set(DEFAULT_PRICES);}catch(e){}
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('login-view').classList.remove('hidden');
+}
+function doLogin(){
+  const user=document.getElementById('l-user').value.trim(),pass=document.getElementById('l-pass').value.trim(),errEl=document.getElementById('l-err');
+  if(!user||!pass){errEl.textContent='Enter username and password';errEl.classList.remove('hidden');return;}
+  db.ref('hr_employees').get().then(snap=>{
+    let found=null;
+    if(snap.exists())snap.forEach(c=>{const e=c.val();if((e.id===user||e.username===user)&&e.password===pass&&e.role==='admin'&&e.active!==false)found=e;});
+    if(found)loginSuccess(found);
+    else{errEl.textContent='Invalid credentials.';errEl.classList.remove('hidden');}
+  }).catch(()=>{errEl.textContent='Connection error.';errEl.classList.remove('hidden');});
+}
+function loginSuccess(emp){
+  currentAdmin=emp;
+  document.getElementById('login-view').classList.add('hidden');
+  document.getElementById('admin-view').style.display='flex';
+  loadAll();
+}
+function doLogout(){
+  currentAdmin=null;
+  document.getElementById('admin-view').style.display='none';
+  document.getElementById('login-view').classList.remove('hidden');
+  document.getElementById('l-pass').value='';
+}
+function goTab(tab,el){
+  document.querySelectorAll('.sm-item').forEach(i=>i.classList.remove('active'));
+  document.querySelectorAll('.pc-panel').forEach(p=>p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if(tab==='dashboard')renderDashboard();
+  if(tab==='employees')renderEmployees();
+  if(tab==='products')renderProducts();
+  if(tab==='prices')renderPricesAdmin();
+  if(tab==='salary'){populateSalEmp();initDates();}
+  if(tab==='records'){populateRecFilters();loadRecords();}
+}
+async function loadAll(){
+  const eSnap=await db.ref('hr_employees').get();
+  if(eSnap.exists())eSnap.forEach(c=>{const e=c.val();if(e.department==='packaging'||e.department==='all')allEmployees[c.key]=e;});
+  const pSnap=await db.ref('products').get();
+  if(pSnap.exists())allProducts=pSnap.val();
+  const rSnap=await db.ref('packtrack/pt_records').get();
+  if(rSnap.exists())rSnap.forEach(c=>allRecords.push({_key:c.key,...c.val()}));
+  allRecords.sort((a,b)=>b.timestamp-a.timestamp);
+  const prSnap=await db.ref('packtrack/settings/prices').get();
+  if(prSnap.exists())prices=prSnap.val();
+  renderDashboard();
+}
+function renderDashboard(){
+  const today=getToday(),tr=allRecords.filter(r=>r.date===today),tEarn=tr.reduce((s,r)=>s+r.earnings,0);
+  document.getElementById('dash-stats').innerHTML=`
+    <div class="stat"><div class="stat-label">Today's Records</div><div class="stat-value green">${tr.length}</div><div class="stat-sub">${today}</div></div>
+    <div class="stat featured"><div class="stat-label">Today's Payroll</div><div class="stat-value accent">${fmt(tEarn)}</div></div>`;
+  document.getElementById('dash-recent').innerHTML=allRecords.slice(0,15).map(r=>`<tr><td><span class="emp-av">${(r.empName||'?')[0]}</span>${r.empName||r.empId}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.productName||''}</td><td><span class="badge badge-wt">${r.workType}</span></td><td style="font-family:var(--mono)">${r.qty}</td><td style="font-family:var(--mono);font-size:12px">${(r.rate||0).toFixed(3)}</td><td style="font-family:var(--mono);color:var(--green);font-weight:700">${fmt(r.earnings)}</td><td style="color:var(--muted);font-size:12px">${r.date||''}</td></tr>`).join('');
+}
+function renderEmployees(){
+  const emps=Object.entries(allEmployees).filter(([k,e])=>e.department==='packaging');
+  document.getElementById('emp-count').textContent=emps.length+' employees';
+  document.getElementById('emp-tbody').innerHTML=emps.map(([key,e])=>{
+    const recs=allRecords.filter(r=>r.empId===e.id).length;
+    return`<tr><td><span class="emp-av">${(e.name||'?')[0]}</span><strong>${e.name}</strong></td><td style="font-family:var(--mono)">${e.id}</td><td style="font-family:var(--mono);color:var(--muted)">${e.password||''}</td><td><span class="badge ${e.active===false?'badge-inactive':'badge-pack'}">${e.active===false?'Inactive':'Active'}</span></td><td style="font-family:var(--mono)">${recs}</td><td><button class="btn btn-ghost btn-sm edit-emp-btn" data-key="${key}">Edit</button></td></tr>`;
+  }).join('');
+}
+function renderProducts(){
+  const prods=Object.entries(allProducts);
+  document.getElementById('prod-count').textContent=prods.length+' products';
+  renderProductTable(prods);
+}
+function renderProductTable(prods){
+  document.getElementById('prod-tbody').innerHTML=prods.map(([key,p])=>`<tr><td style="font-family:var(--mono);color:var(--accent)">${p.barcode}</td><td style="font-family:var(--mono);color:var(--muted)">${p.code||'-'}</td><td>${p.name}</td><td><span class="badge ${p.active===false?'badge-inactive':'badge-pack'}">${p.active===false?'Inactive':'Active'}</span></td><td style="display:flex;gap:6px"><button class="btn btn-ghost btn-sm edit-prod-btn" data-key="${key}">Edit</button><button class="btn btn-sm remove-prod-btn" data-key="${key}" style="background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,.3)">Remove</button></td></tr>`).join('');
+}
+function filterProducts(){
+  const q=document.getElementById('prod-search').value.toLowerCase();
+  renderProductTable(Object.entries(allProducts).filter(([k,p])=>!q||(p.name||'').toLowerCase().includes(q)||(p.barcode||'').includes(q)||(p.code||'').toLowerCase().includes(q)));
+}
+document.addEventListener('click',function(e){
+  const pb=e.target.closest('.edit-prod-btn');if(pb){openProductModal(pb.dataset.key);return;}
+  const rb=e.target.closest('.remove-prod-btn');if(rb){removeProduct(rb.dataset.key);return;}
+  const eb=e.target.closest('.edit-emp-btn');if(eb){openEmpModal(eb.dataset.key);return;}
+});
+function renderPricesAdmin(){
+  document.getElementById('prices-grid-admin').innerHTML=`<div style="display:grid;grid-template-columns:repeat(5,1fr);gap:12px">${WORK_TYPES.map(wt=>`<div><label style="font-size:12px;font-family:var(--mono);font-weight:700;color:var(--accent);margin-bottom:4px;display:block">${wt.code}</label><div style="font-size:10px;color:var(--muted);margin-bottom:5px;font-family:var(--mono)">${wt.name}</div><input type="number" id="pr-${wt.code}" step="0.001" min="0" value="${(prices[wt.code]||0).toFixed(3)}" style="text-align:center;font-family:var(--mono)"></div>`).join('')}</div>`;
+}
+async function savePrices(){
+  const np={};
+  WORK_TYPES.forEach(wt=>{np[wt.code]=parseFloat(document.getElementById('pr-'+wt.code).value)||0;});
+  try{await db.ref('packtrack/settings/prices').set(np);prices=np;toast('Prices saved','success');}catch(e){toast('Save failed: '+e.message,'error');}
+}
+function openEmpModal(key=null){
+  const e=key?allEmployees[key]:null;
+  document.getElementById('emp-modal-title').textContent=e?'Edit Employee':'Add Employee';
+  document.getElementById('emp-edit-key').value=key||'';
+  document.getElementById('emp-name').value=e?e.name:'';
+  document.getElementById('emp-id').value=e?e.id:'V00'+(Object.keys(allEmployees).length+1);
+  document.getElementById('emp-id').readOnly=!!e;
+  document.getElementById('emp-ic').value=e?e.ic||'':'';
+  document.getElementById('emp-pass').value=e?e.password||'':'';
+  document.getElementById('emp-active').value=e?(e.active===false?'false':'true'):'true';
+  openModal('emp-modal');
+}
+async function saveEmployee(){
+  const key=document.getElementById('emp-edit-key').value,name=document.getElementById('emp-name').value.trim().toUpperCase(),id=document.getElementById('emp-id').value.trim().toUpperCase(),ic=document.getElementById('emp-ic').value.trim(),pass=document.getElementById('emp-pass').value.trim(),active=document.getElementById('emp-active').value==='true';
+  if(!name||!id){toast('Name and ID are required','error');return;}
+  if(!pass){toast('Password is required','error');return;}
+  const data={id,name,ic,password:pass,role:'staff',department:'packaging',active};
+  if(key){await db.ref('hr_employees/'+key).update(data);allEmployees[key]={...allEmployees[key],...data};toast('Employee updated','success');}
+  else{await db.ref('hr_employees/'+id).set(data);allEmployees[id]=data;toast('Employee added','success');}
+  closeModal('emp-modal');renderEmployees();
+}
+let empImportData=[];
+function openEmpImportModal(){
+  empImportData=[];document.getElementById('emp-csv-file').value='';
+  document.getElementById('emp-import-preview').classList.add('hidden');
+  document.getElementById('emp-import-btn').classList.add('hidden');
+  openModal('emp-import-modal');
+}
+function handleEmpCSV(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.split('\n').filter(l=>l.trim());empImportData=[];
+    lines.forEach((line,i)=>{if(i===0&&line.toLowerCase().includes('id'))return;const parts=line.split(',').map(s=>s.trim().replace(/^"|"$/g,''));if(parts.length>=2&&parts[0])empImportData.push({id:parts[0].toUpperCase(),name:(parts[1]||'').toUpperCase(),ic:parts[2]||'',password:String(parts[3]||'1234')});});
+    document.getElementById('emp-import-count').textContent=empImportData.length+' employees found';
+    document.getElementById('emp-import-list').innerHTML=empImportData.map(e=>`${e.id} | ${e.name} | ${e.password}`).join('<br>');
+    document.getElementById('emp-import-preview').classList.remove('hidden');
+    document.getElementById('emp-import-btn').classList.remove('hidden');
+  };reader.readAsText(file);
+}
+async function doEmpImport(){
+  if(!empImportData.length)return;
+  const btn=document.getElementById('emp-import-btn');btn.textContent='Importing...';btn.disabled=true;
+  const updates={};
+  empImportData.forEach(e=>{updates['hr_employees/'+e.id]={id:e.id,name:e.name,ic:e.ic,password:e.password,role:'staff',department:'packaging',active:true};});
+  try{await db.ref().update(updates);empImportData.forEach(e=>{allEmployees[e.id]=updates['hr_employees/'+e.id];});toast(empImportData.length+' employees imported','success');closeModal('emp-import-modal');renderEmployees();}catch(err){toast('Import failed: '+err.message,'error');}
+  btn.textContent='Import Employees';btn.disabled=false;
+}
+function openProductModal(key=null){
+  const p=key?allProducts[key]:null;
+  document.getElementById('prod-modal-title').textContent=p?'Edit Product':'Add Product';
+  document.getElementById('prod-edit-key').value=key||'';
+  document.getElementById('p-barcode').value=p?p.barcode:'';
+  document.getElementById('p-barcode').readOnly=!!p;
+  document.getElementById('p-barcode').style.opacity=p?'0.6':'1';
+  document.getElementById('p-code').value=p?p.code||'':'';
+  document.getElementById('p-name').value=p?p.name:'';
+  document.getElementById('p-active').value=p?(p.active===false?'false':'true'):'true';
+  openModal('prod-modal');
+}
+async function saveProduct(){
+  const key=document.getElementById('prod-edit-key').value,barcode=document.getElementById('p-barcode').value.trim(),code=document.getElementById('p-code').value.trim().toUpperCase(),name=document.getElementById('p-name').value.trim().toUpperCase(),active=document.getElementById('p-active').value==='true';
+  if(!barcode||!name){toast('Barcode and name are required','error');return;}
+  const dbKey=barcode.replace(/[.#$[\]]/g,'_'),data={barcode,code,name,active};
+  try{await db.ref('products/'+dbKey).set(data);allProducts[dbKey]=data;toast(key?'Product updated':'Product added','success');closeModal('prod-modal');renderProducts();}catch(e){toast('Save failed: '+e.message,'error');}
+}
+async function removeProduct(key){
+  const p=allProducts[key];if(!p)return;
+  if(!confirm('Remove "'+p.name+'"?\nThis cannot be undone.'))return;
+  try{await db.ref('products/'+key).remove();delete allProducts[key];toast('Product removed','success');renderProducts();}catch(e){toast('Remove failed: '+e.message,'error');}
+}
+function openImportModal(){
+  document.getElementById('import-preview').classList.add('hidden');
+  document.getElementById('import-btn').classList.add('hidden');
+  document.getElementById('csv-file').value='';importData=[];openModal('import-modal');
+}
+function handleCSV(input){
+  const file=input.files[0];if(!file)return;
+  const reader=new FileReader();
+  reader.onload=e=>{
+    const lines=e.target.result.split('\n').filter(l=>l.trim());importData=[];
+    lines.forEach((line,i)=>{
+      // Skip header row (contains 'code' or 'no' in first/second column)
+      if(i===0)return;
+      const parts=line.split(',').map(s=>s.trim().replace(/^"|"$/g,''));
+      if(parts.length<4||!parts[3])return; // need at least barcode at col 4
+      importData.push({
+        NO:          parts[0]||'',
+        CODE:        (parts[1]||'').toUpperCase(),
+        NAME:        (parts[2]||'').toUpperCase(),
+        BARCODE:     parts[3]||'',
+        NINSO_CTN:   parts[4]||'',
+        PACKSIZE_SUPPLIER:  parts[5]||'',
+        TOTAL_PCS_SUPPLIER: parts[6]||'',
+        RP_UNIT:     parts[7]||'',
+        PACKSIZE_NINSO:     parts[8]||'',
+        TOTAL_PCS_NINSO:    parts[9]||'',
+        PACKING_MATERIAL:   (parts[10]||'').toUpperCase(),
+        OUTER:               (parts[11]||'').toUpperCase(),
+      });
+    });
+    document.getElementById('import-count').textContent=importData.length+' products found';
+    document.getElementById('import-preview-list').innerHTML=importData.slice(0,20).map(p=>`${p.BARCODE} | ${p.CODE} | ${p.NAME}`).join('<br>');
+    document.getElementById('import-preview').classList.remove('hidden');
+    document.getElementById('import-btn').classList.remove('hidden');
+  };reader.readAsText(file);
+}
+async function doImport(){
+  if(!importData.length)return;
+  const btn=document.getElementById('import-btn');btn.textContent='Importing...';btn.disabled=true;
+  const updates={};
+  importData.forEach(p=>{
+    if(!p.BARCODE)return;
+    const key=p.BARCODE.replace(/[.#$[\]]/g,'_');
+    updates['products/'+key]={
+      CODE:p.CODE, NAME:p.NAME, BARCODE:p.BARCODE,
+      NINSO_CTN:p.NINSO_CTN, PACKSIZE_SUPPLIER:p.PACKSIZE_SUPPLIER,
+      TOTAL_PCS_SUPPLIER:p.TOTAL_PCS_SUPPLIER, RP_UNIT:p.RP_UNIT,
+      PACKSIZE_NINSO:p.PACKSIZE_NINSO, TOTAL_PCS_NINSO:p.TOTAL_PCS_NINSO,
+      PACKING_MATERIAL:p.PACKING_MATERIAL, OUTER:p.OUTER, active:true
+    };
+  });
+  try{
+    await db.ref().update(updates);
+    Object.assign(allProducts,Object.fromEntries(Object.entries(updates).map(([k,v])=>[k.replace('products/',''),v])));
+    toast(importData.length+' products imported','success');
+    closeModal('import-modal');renderProducts();
+  }catch(e){toast('Import failed: '+e.message,'error');}
+  btn.textContent='Import Products';btn.disabled=false;
+}
+async function clearAllProducts(){
+  if(!confirm('Clear ALL products?\nThis cannot be undone.'))return;
+  try{
+    await db.ref('products').remove();
+    allProducts={};
+    toast('All products cleared','success');
+    renderProducts();
+  }catch(e){toast('Clear failed: '+e.message,'error');}
+}
+function populateSalEmp(){
+  const sel=document.getElementById('sal-emp'),emps=Object.values(allEmployees).filter(e=>e.department==='packaging');
+  sel.innerHTML='<option value="">All Employees</option>'+emps.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+}
+function initDates(){
+  const today=getToday();
+  document.getElementById('sal-from').value=today.slice(0,7)+'-01';
+  document.getElementById('sal-to').value=today;
+}
+function calcSalary(){
+  const empId=document.getElementById('sal-emp').value,from=document.getElementById('sal-from').value,to=document.getElementById('sal-to').value;
+  if(!from||!to){toast('Select date range','error');return;}
+  let recs=allRecords.filter(r=>r.date>=from&&r.date<=to);
+  if(empId)recs=recs.filter(r=>r.empId===empId);
+  const area=document.getElementById('sal-result');
+  if(!recs.length){area.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">No records found</div>';return;}
+  const grandTotal=recs.reduce((s,r)=>s+r.earnings,0),byEmp={};
+  recs.forEach(r=>{if(!byEmp[r.empId])byEmp[r.empId]=[];byEmp[r.empId].push(r);});
+  let html='';
+  if(!empId)html+=`<div class="sal-result"><div class="sr-info"><h3>All Employees</h3><p>${recs.length} records · ${from} to ${to}</p></div><div><div class="sr-total-label">Grand Total</div><div class="sr-total">${fmt(grandTotal)}</div></div></div>`;
+  Object.keys(byEmp).forEach(eid=>{
+    const emp=Object.values(allEmployees).find(e=>e.id===eid),er=byEmp[eid].sort((a,b)=>b.timestamp-a.timestamp),et=er.reduce((s,r)=>s+r.earnings,0),byWT={};
+    er.forEach(r=>{if(!byWT[r.workType])byWT[r.workType]=0;byWT[r.workType]+=r.earnings;});
+    html+=`<div class="sal-result"><div class="sr-info"><h3>${emp?.name||eid}</h3><p>${er.length} records · ${from} to ${to}</p><div class="sr-badges">${Object.keys(byWT).map(wt=>`<span class="badge badge-wt">${wt}: ${fmt(byWT[wt])}</span>`).join('')}</div></div><div><div class="sr-total-label">Total Salary</div><div class="sr-total">${fmt(et)}</div></div></div><div class="card" style="margin-bottom:24px"><div class="card-header"><h3>${emp?.name||eid}</h3></div><div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Product</th><th>Work Type</th><th>Qty</th><th>Rate</th><th>Earnings</th><th>Time</th></tr></thead><tbody>${er.map(r=>`<tr><td style="font-family:var(--mono);font-size:12px">${r.date}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.productName||''}</td><td><span class="badge badge-wt">${r.workType}</span></td><td style="font-family:var(--mono)">${r.qty}</td><td style="font-family:var(--mono);font-size:12px">${(r.rate||0).toFixed(3)}</td><td style="font-family:var(--mono);color:var(--green);font-weight:700">${fmt(r.earnings)}</td><td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${new Date(r.timestamp).toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'})}</td></tr>`).join('')}</tbody></table></div></div>`;
+  });
+  area.innerHTML=html;
+}
+function populateRecFilters(){
+  const sel=document.getElementById('rec-emp'),emps=Object.values(allEmployees).filter(e=>e.department==='packaging');
+  sel.innerHTML='<option value="">All</option>'+emps.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  document.getElementById('rec-wt').innerHTML='<option value="">All</option>'+WORK_TYPES.map(wt=>`<option value="${wt.code}">${wt.code} — ${wt.name}</option>`).join('');
+  document.getElementById('rec-date').value='';
+}
+function loadRecords(){
+  const empId=document.getElementById('rec-emp').value,date=document.getElementById('rec-date').value,wt=document.getElementById('rec-wt').value;
+  let recs=allRecords;
+  if(empId)recs=recs.filter(r=>r.empId===empId);
+  if(date)recs=recs.filter(r=>r.date===date);
+  if(wt)recs=recs.filter(r=>r.workType===wt);
+  document.getElementById('rec-count').textContent=recs.length+' records · Total: '+fmt(recs.reduce((s,r)=>s+r.earnings,0));
+  document.getElementById('rec-tbody').innerHTML=recs.slice(0,200).map(r=>`<tr><td style="font-family:var(--mono);font-size:12px">${r.date||''}</td><td><span class="emp-av">${(r.empName||'?')[0]}</span>${r.empName||r.empId}</td><td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.productName||''}</td><td><span class="badge badge-wt">${r.workType}</span></td><td style="font-family:var(--mono)">${r.qty}</td><td style="font-family:var(--mono);font-size:12px">${(r.rate||0).toFixed(3)}</td><td style="font-family:var(--mono);color:var(--green);font-weight:700">${fmt(r.earnings)}</td><td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${new Date(r.timestamp).toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'})}</td></tr>`).join('');
+}
+function openModal(id){document.getElementById(id).classList.add('open')}
+function closeModal(id){document.getElementById(id).classList.remove('open')}
+document.querySelectorAll('.modal-bg').forEach(b=>b.addEventListener('click',e=>{if(e.target===b)b.classList.remove('open')}));
+function toast(msg,type='success'){
+  const tw=document.getElementById('toast-wrap'),t=document.createElement('div');
+  t.className='toast t-'+type;t.textContent=msg;tw.appendChild(t);
+  setTimeout(()=>t.classList.add('show'),10);
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300)},3500);
+}
+document.getElementById('l-pass').addEventListener('keypress',e=>{if(e.key==='Enter')doLogin()});
+document.getElementById('l-user').addEventListener('keypress',e=>{if(e.key==='Enter')doLogin()});
+init();
+</script>
+</body>
+</html>
