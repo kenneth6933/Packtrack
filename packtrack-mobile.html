@@ -630,10 +630,12 @@ function closeScanner(){
   document.getElementById('scanner-modal').classList.remove('open');
   if(html5QrCode){html5QrCode.stop().catch(()=>{});html5QrCode=null;}
 }
+// Unregister any existing service workers
 if('serviceWorker' in navigator){
   navigator.serviceWorker.getRegistrations().then(regs=>{
-    regs.forEach(reg=>reg.unregister());
+    regs.forEach(reg=>{reg.unregister();});
   });
+  caches.keys().then(keys=>keys.forEach(k=>caches.delete(k)));
 }
 init();
 </script>
