@@ -456,7 +456,7 @@ function lookupBarcode(bc){
   Object.values(products).forEach(p=>{if((p.BARCODE||p.barcode)===bc)found=p});
   if(found){showProduct(found);return;}
   if(products[key]){showProduct(products[key]);return;}
-  db.ref('products').orderByChild('barcode').equalTo(bc).limitToFirst(1).get().then(s=>{
+  db.ref('products').orderByChild('BARCODE').equalTo(bc).limitToFirst(1).get().then(s=>{
     if(s.exists()){let p;s.forEach(c=>{p=c.val()});showProduct(p);}
     else showNotFound();
   });
