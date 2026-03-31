@@ -506,9 +506,9 @@ async function submitRecord(){
 async function updateTodayEarnings(){
   const today=getToday();
   try{
-    const snap=await db.ref('packtrack/pt_records').orderByChild('empId').equalTo(currentUser.id).get();
+    const snap=await db.ref('packtrack/pt_records').get();
     let earn=0,count=0;
-    if(snap.exists())snap.forEach(c=>{const r=c.val();if(r.date===today){earn+=r.earnings;count++;}});
+    if(snap.exists())snap.forEach(c=>{const r=c.val();if(r.empId===currentUser.id&&r.date===today){earn+=r.earnings;count++;}});
     document.getElementById('today-earn').textContent=fmt(earn);
     document.getElementById('today-meta').textContent=count+' record'+(count!==1?'s':'');
   }catch(e){}
@@ -517,9 +517,9 @@ async function loadHistory(){
   const histList=document.getElementById('history-list');
   histList.innerHTML='<div style="text-align:center;padding:30px;color:var(--muted)">Loading...</div>';
   try{
-    const snap=await db.ref('packtrack/pt_records').orderByChild('empId').equalTo(currentUser.id).get();
+    const snap=await db.ref('packtrack/pt_records').get();
     if(!snap.exists()){histList.innerHTML='<div class="empty-state"><div class="empty-icon">📋</div><div class="empty-text">No records yet</div></div>';return;}
-    const recs=[];snap.forEach(c=>recs.push(c.val()));recs.sort((a,b)=>b.timestamp-a.timestamp);
+    const recs=[];snap.forEach(c=>{const r=c.val();if(r.empId===currentUser.id)recs.push(r);});recs.sort((a,b)=>b.timestamp-a.timestamp);
     const today=getToday(),month=getMonth();
     let totalEarn=0,monthEarn=0,todayCount=0,monthCount=0;
     recs.forEach(r=>{totalEarn+=r.earnings;if(r.date&&r.date.startsWith(month)){monthEarn+=r.earnings;monthCount++;}if(r.date===today)todayCount++;});
