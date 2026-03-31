@@ -453,7 +453,7 @@ function onWTSelect(code){
 function lookupBarcode(bc){
   const key=bc.replace(/[.#$[\]]/g,'_');
   let found=null;
-  Object.values(products).forEach(p=>{if(p.barcode===bc)found=p});
+  Object.values(products).forEach(p=>{if((p.BARCODE||p.barcode)===bc)found=p});
   if(found){showProduct(found);return;}
   if(products[key]){showProduct(products[key]);return;}
   db.ref('products').orderByChild('barcode').equalTo(bc).limitToFirst(1).get().then(s=>{
@@ -463,8 +463,8 @@ function lookupBarcode(bc){
 }
 function showProduct(p){
   currentProduct=p;
-  document.getElementById('pf-name').textContent=p.name;
-  document.getElementById('pf-code').textContent=(p.code||'')+' · '+p.barcode;
+  document.getElementById('pf-name').textContent=p.NAME||p.name;
+  document.getElementById('pf-code').textContent=(p.CODE||p.code||'')+' · '+(p.BARCODE||p.barcode);
   document.getElementById('product-found').classList.add('show');
   document.getElementById('product-not-found').classList.remove('show');
   calcEarn();
@@ -492,7 +492,7 @@ async function submitRecord(){
   try{
     await db.ref('packtrack/pt_records').push({
       empId:currentUser.id,empName:currentUser.name,
-      barcode:currentProduct.barcode,productCode:currentProduct.code||'',productName:currentProduct.name,
+      barcode:currentProduct.BARCODE||currentProduct.barcode,productCode:currentProduct.CODE||currentProduct.code||'',productName:currentProduct.NAME||currentProduct.name,
       workType:selectedWT,qty,rate,earnings:earn,date:getToday(),timestamp:Date.now()
     });
     toast('Saved! Earned '+fmt(earn),'success');
