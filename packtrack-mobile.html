@@ -631,7 +631,9 @@ function closeScanner(){
   if(html5QrCode){html5QrCode.stop().catch(()=>{});html5QrCode=null;}
 }
 if('serviceWorker' in navigator){
-  window.addEventListener('load',()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+  navigator.serviceWorker.getRegistrations().then(regs=>{
+    regs.forEach(reg=>reg.unregister());
+  });
 }
 init();
 </script>
