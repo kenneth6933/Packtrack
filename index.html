@@ -338,8 +338,8 @@ const WORK_TYPES=[
   {code:'TM',name:'TAPE W/MACHINE'},{code:'SP',name:'SPECIAL CASE'},
 ];
 const fmt=n=>'RM '+parseFloat(n||0).toFixed(2);
-const getToday=()=>new Date().toISOString().slice(0,10);
-const getMonth=()=>new Date().toISOString().slice(0,7);
+const getToday=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
+const getMonth=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0');};
 
 async function init(){
   try{
