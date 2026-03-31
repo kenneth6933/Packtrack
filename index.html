@@ -2,6 +2,9 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-capable" content="yes">
@@ -511,7 +514,7 @@ async function updateTodayEarnings(){
     if(snap.exists())snap.forEach(c=>{const r=c.val();if(r.empId===currentUser.id&&r.date===today){earn+=r.earnings;count++;}});
     document.getElementById('today-earn').textContent=fmt(earn);
     document.getElementById('today-meta').textContent=count+' record'+(count!==1?'s':'');
-  }catch(e){}
+  }catch(e){console.error('updateTodayEarnings error:',e);}
 }
 async function loadHistory(){
   const histList=document.getElementById('history-list');
