@@ -334,11 +334,15 @@ const db=firebase.database();
 
 let currentUser=null,prices={},products={},selectedWT=null,currentProduct=null;
 const WORK_TYPES=[
-  {code:'PO',name:'PACKING ONION'},{code:'PK',name:'PACKING KACANG'},
-  {code:'PG',name:'PACKING GENERAL'},{code:'S',name:'SEALING'},
-  {code:'PB',name:'PACKING IN BEG'},{code:'W',name:'WEIGHING'},
-  {code:'T',name:'TAPE'},{code:'TB',name:'TAPE IN CTN'},
-  {code:'TM',name:'TAPE W/MACHINE'},{code:'SP',name:'SPECIAL CASE'},
+  {code:'L', name:'LABELING'},
+  {code:'PB',name:'PACKING IN THE BEG'},
+  {code:'PF',name:'PACKING FULL'},
+  {code:'PO',name:'PACKING ONION'},
+  {code:'S', name:'SEALING'},
+  {code:'T', name:'TAPE'},
+  {code:'TM',name:'TAPE WITH MACHINE'},
+  {code:'WB',name:'WEIGH BEANS'},
+  {code:'WO',name:'WEIGHING ONION'},
 ];
 const fmt=n=>'RM '+parseFloat(n||0).toFixed(2);
 const getToday=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -348,7 +352,7 @@ async function init(){
   try{
     const snap=await db.ref('packtrack/settings/prices').get();
     if(snap.exists())prices=snap.val();
-    else{const d={PO:0.040,PK:0.070,PG:0.040,S:0.020,PB:0.020,W:0.060,T:0.030,TB:0.010,TM:0.025,SP:0.000};await db.ref('packtrack/settings/prices').set(d);prices=d;}
+    else{const d={L:0.010,PB:0.020,PF:0.080,PO:0.040,S:0.020,T:0.030,TM:0.025,WB:0.070,WO:0.060};await db.ref('packtrack/settings/prices').set(d);prices=d;}
     const pSnap=await db.ref('products').get();
     if(pSnap.exists())products=pSnap.val();
   }catch(e){console.error(e)}
