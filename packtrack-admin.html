@@ -179,7 +179,7 @@ tr:hover td{background:rgba(33,38,45,.5)}
       <div class="sb-tag">PackTrack</div>
       <div class="sb-name">Admin Panel</div>
       <div class="sb-company">K&H Wholesale Trading</div>
-      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:8px">v3.05</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:8px">v3.06</div>
     </div>
     <div class="sb-menu">
       <div class="sm-item active" onclick="goTab('dashboard',this)"><span class="sm-icon">◈</span>Dashboard</div>
@@ -499,8 +499,9 @@ const WORK_TYPES = [
   {code:'WB',name:'WEIGH BEANS'},
   {code:'WO',name:'WEIGHING ONION'},
   {code:'WH',name:'WORKING HOURS'},
+  {code:'SB',name:'SIDE BAG'},
 ];
-const DEFAULT_PRICES = {L:.010,PB:.020,PF:.080,PO:.040,S:.020,T:.030,TM:.025,WB:.070,WO:.060,WH:8.00};
+const DEFAULT_PRICES = {L:.010,PB:.020,PF:.080,PO:.040,S:.020,T:.030,TM:.025,WB:.070,WO:.060,WH:8.00,SB:.050};
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let allEmployees = {}, allProducts = {}, allRecords = [], prices = {...DEFAULT_PRICES};

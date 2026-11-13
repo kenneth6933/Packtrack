@@ -343,6 +343,7 @@ const WORK_TYPES=[
   {code:'TM',name:'TAPE WITH MACHINE'},
   {code:'WB',name:'WEIGH BEANS'},
   {code:'WO',name:'WEIGHING ONION'},
+  {code:'SB',name:'SIDE BAG'},
 ];
 const fmt=n=>'RM '+parseFloat(n||0).toFixed(2);
 const getToday=()=>{const d=new Date();return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');};
@@ -352,7 +353,7 @@ async function init(){
   try{
     const snap=await db.ref('packtrack/settings/prices').get();
     if(snap.exists())prices=snap.val();
-    else{const d={L:0.010,PB:0.020,PF:0.080,PO:0.040,S:0.020,T:0.030,TM:0.025,WB:0.070,WO:0.060};await db.ref('packtrack/settings/prices').set(d);prices=d;}
+    else{const d={L:0.010,PB:0.020,PF:0.080,PO:0.040,S:0.020,T:0.030,TM:0.025,WB:0.070,WO:0.060,SB:0.050};await db.ref('packtrack/settings/prices').set(d);prices=d;}
     const pSnap=await db.ref('products').get();
     if(pSnap.exists())products=pSnap.val();
     // Keep products in sync — new products added in admin appear immediately

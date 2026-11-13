@@ -1,0 +1,1498 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PackTrack Admin</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;700&family=IBM+Plex+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-database-compat.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d1117;--surface:#161b22;--surface2:#21262d;--border:#30363d;
+  --text:#e6edf3;--muted:#7d8590;--accent:#f0883e;--accent-bg:rgba(240,136,62,.12);
+  --green:#3fb950;--green-bg:rgba(63,185,80,.1);--red:#f85149;--red-bg:rgba(248,81,73,.1);
+  --mono:'IBM Plex Mono',monospace;--sans:'IBM Plex Sans',system-ui,sans-serif;
+}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--sans);background:var(--bg);color:var(--text)}
+.hidden{display:none!important}
+input:not([type=file]),select,textarea{font-family:var(--sans);font-size:14px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 12px;color:var(--text);outline:none;transition:border-color .15s;width:100%}
+input:not([type=file]):focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-bg)}
+label{display:block;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:5px}
+.field{margin-bottom:14px}
+.btn{font-family:var(--sans);font-size:13px;font-weight:700;border:none;border-radius:8px;cursor:pointer;transition:all .15s;padding:8px 16px;display:inline-flex;align-items:center;gap:6px}
+.btn:hover{opacity:.87}.btn:active{transform:scale(.98)}
+.btn-primary{background:var(--accent);color:#000}
+.btn-ghost{background:var(--surface2);color:var(--text);border:1px solid var(--border)}
+.btn-danger{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,.3)}
+.btn-sm{padding:5px 12px;font-size:12px;border-radius:6px}
+.grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+
+/* Loading */
+#loading{position:fixed;inset:0;background:var(--bg);display:flex;align-items:center;justify-content:center;z-index:999;flex-direction:column;gap:12px}
+.spinner{width:32px;height:32px;border:3px solid var(--border);border-top-color:var(--accent);border-radius:50%;animation:spin .7s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+/* Login */
+#login-view{height:100vh;display:flex;align-items:center;justify-content:center}
+.login-card{width:380px;background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:36px;position:relative}
+.login-card::before{content:'';position:absolute;top:0;left:0;right:0;height:3px;background:var(--accent);border-radius:16px 16px 0 0}
+.login-tag{font-family:var(--mono);font-size:10px;color:var(--accent);letter-spacing:4px;text-transform:uppercase;margin-bottom:8px}
+.login-title{font-size:24px;font-weight:800;margin-bottom:4px}
+.login-sub{font-size:13px;color:var(--muted);margin-bottom:28px}
+.alert-box{padding:10px 14px;border-radius:8px;font-size:13px;margin-top:12px;background:var(--red-bg);border:1px solid rgba(248,81,73,.3);color:var(--red)}
+
+/* Layout */
+#admin-view{display:none;height:100vh;flex-direction:row}
+.sidebar{width:220px;background:var(--surface);border-right:1px solid var(--border);display:flex;flex-direction:column;flex-shrink:0;height:100vh}
+.sb-brand{padding:20px 18px;border-bottom:1px solid var(--border)}
+.sb-tag{font-family:var(--mono);font-size:9px;color:var(--accent);letter-spacing:3px;text-transform:uppercase}
+.sb-name{font-size:16px;font-weight:800;margin-top:3px}
+.sb-company{font-size:11px;color:var(--muted);margin-top:2px}
+.sb-menu{flex:1;padding:10px 8px;overflow-y:auto}
+.sm-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);transition:all .15s;margin-bottom:2px;user-select:none}
+.sm-item:hover{background:var(--surface2);color:var(--text)}
+.sm-item.active{background:var(--accent-bg);color:var(--accent)}
+.sm-icon{width:18px;text-align:center;font-size:15px}
+.sb-footer{padding:10px 8px;border-top:1px solid var(--border)}
+.sm-logout{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;cursor:pointer;font-size:14px;font-weight:600;color:var(--muted);background:none;border:none;width:100%;font-family:var(--sans);text-align:left;transition:all .15s}
+.sm-logout:hover{background:var(--red-bg);color:var(--red)}
+.main-area{flex:1;overflow-y:auto;height:100vh}
+.main-inner{padding:32px 36px;max-width:1200px}
+.pc-panel{display:none}.pc-panel.active{display:block}
+.page-header{margin-bottom:24px;display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:12px}
+.page-header h1{font-size:24px;font-weight:800}
+.page-header p{font-size:13px;color:var(--muted);margin-top:3px}
+.btn-row{display:flex;gap:8px;flex-wrap:wrap}
+
+/* Cards & Tables */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px}
+.card-header{padding:14px 20px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
+.card-header h3{font-size:14px;font-weight:700}
+.card-body{padding:20px}
+.stats-row{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-bottom:24px}
+.stat{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px}
+.stat.featured{border-color:rgba(240,136,62,.4);background:var(--accent-bg)}
+.stat-label{font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:2px;color:var(--muted);margin-bottom:8px}
+.stat-value{font-family:var(--mono);font-size:28px;font-weight:700}
+.stat-value.accent{color:var(--accent)}.stat-value.green{color:var(--green)}
+.stat-sub{font-size:11px;color:var(--muted);margin-top:4px}
+.tbl-wrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse}
+th{background:var(--surface2);padding:10px 16px;text-align:left;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--muted);border-bottom:1px solid var(--border);white-space:nowrap}
+td{padding:10px 16px;font-size:13px;border-bottom:1px solid rgba(48,54,61,.4);vertical-align:middle}
+tr:last-child td{border-bottom:none}
+tr:hover td{background:rgba(33,38,45,.5)}
+.badge{display:inline-block;padding:2px 8px;border-radius:4px;font-family:var(--mono);font-size:11px;font-weight:700}
+.badge-green{background:var(--green-bg);color:var(--green);border:1px solid rgba(63,185,80,.3)}
+.badge-orange{background:var(--accent-bg);color:var(--accent);border:1px solid rgba(240,136,62,.3)}
+.badge-red{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,.3)}
+.emp-av{display:inline-flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:50%;background:var(--accent-bg);border:1px solid rgba(240,136,62,.3);font-family:var(--mono);font-size:11px;font-weight:700;color:var(--accent);margin-right:8px;vertical-align:middle;flex-shrink:0}
+.search-bar{position:relative;margin-bottom:16px;padding:14px 20px 0}
+.search-bar input{padding-left:36px;background:var(--surface2)}
+.search-icon{position:absolute;left:32px;top:50%;transform:translateY(-25%);color:var(--muted);font-size:14px;pointer-events:none}
+
+/* Modals */
+.modal-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:50;align-items:center;justify-content:center;padding:20px}
+.modal-overlay.open{display:flex}
+.modal-box{background:var(--surface);border:1px solid var(--border);border-radius:16px;padding:28px;width:100%;max-width:560px;max-height:90vh;overflow-y:auto;position:relative}
+.modal-box h2{font-size:20px;font-weight:800;margin-bottom:4px}
+.modal-sub{font-size:13px;color:var(--muted);margin-bottom:22px}
+.modal-close{position:absolute;top:16px;right:16px;background:var(--surface2);border:1px solid var(--border);border-radius:6px;width:28px;height:28px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:14px;transition:all .15s}
+.modal-close:hover{color:var(--text)}
+.modal-footer{display:flex;gap:10px;justify-content:flex-end;margin-top:22px;padding-top:16px;border-top:1px solid var(--border)}
+
+/* CSV Import */
+.csv-upload-label{display:block;border:2px dashed var(--border);border-radius:10px;padding:30px;text-align:center;cursor:pointer;transition:all .15s;margin-bottom:14px}
+.csv-upload-label:hover{border-color:var(--accent);background:var(--accent-bg)}
+.csv-upload-label input[type=file]{display:none}
+.csv-hint{background:var(--surface2);border-radius:8px;padding:12px 14px;font-size:11px;color:var(--muted);font-family:var(--mono);margin-bottom:14px}
+.csv-preview{background:var(--surface2);border-radius:8px;padding:12px 14px;font-size:12px;font-family:var(--mono);color:var(--muted);max-height:200px;overflow-y:auto;margin-bottom:14px;line-height:1.8}
+.csv-count{font-size:12px;font-weight:700;color:var(--accent);margin-bottom:8px;text-transform:uppercase;letter-spacing:1px}
+
+/* Salary — Date Range Picker */
+.sal-toolbar{display:flex;gap:8px;align-items:center;flex-wrap:wrap;margin-bottom:18px}
+.sal-field{flex:1;min-width:140px}
+.drp-wrap{position:relative;display:inline-block;}
+.drp-btn{display:flex;align-items:center;gap:8px;padding:9px 14px;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-family:var(--sans);font-size:13px;color:var(--text);cursor:pointer;white-space:nowrap;min-width:190px;justify-content:space-between;font-weight:600;}
+.drp-btn:hover{background:var(--surface2);}
+.drp-ico{color:var(--muted);font-size:14px;}
+.drp-dropdown{position:absolute;top:calc(100% + 4px);left:0;background:var(--surface);border:1px solid var(--border);border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,.18);z-index:200;min-width:230px;overflow:hidden;display:none;}
+.drp-dropdown.open{display:block;}
+.drp-option{padding:10px 16px;font-size:13px;cursor:pointer;transition:background .1s;border-bottom:1px solid var(--border);font-weight:500;}
+.drp-option:last-child{border-bottom:none;}
+.drp-option:hover{background:var(--surface2);}
+.drp-option.active{color:var(--accent);font-weight:700;background:var(--accent-bg);}
+.drp-custom{padding:14px 16px;border-top:1px solid var(--border);display:none;background:var(--surface2);}
+.drp-custom.show{display:block;}
+.drp-custom-label{font-size:10px;font-weight:700;color:var(--muted);letter-spacing:1px;margin-bottom:8px;}
+.drp-custom-row{display:flex;gap:6px;align-items:center;}
+.drp-custom-inp{flex:1;padding:7px 9px;border:1px solid var(--border);border-radius:8px;font-family:var(--mono);font-size:11px;color:var(--text);background:var(--surface);outline:none;}
+.drp-custom-inp:focus{border-color:var(--accent);}
+.drp-apply{padding:7px 13px;background:var(--accent);color:#000;border:none;border-radius:8px;font-size:12px;font-weight:700;cursor:pointer;white-space:nowrap;}
+.fb-status{display:flex;align-items:center;gap:5px;font-size:11px;color:var(--muted);font-family:var(--mono);}
+.fb-dot{width:8px;height:8px;border-radius:50%;background:var(--muted);flex-shrink:0;}
+.fb-dot.connected{background:var(--green);}
+/* Salary */
+.sal-filters{background:var(--surface);border:1px solid var(--border);border-radius:12px;padding:18px;display:flex;gap:14px;align-items:flex-end;flex-wrap:wrap;margin-bottom:20px}
+.sal-result-card{background:var(--accent-bg);border:1px solid rgba(240,136,62,.3);border-radius:12px;padding:20px 24px;margin-bottom:20px;display:flex;justify-content:space-between;align-items:center}
+.sr-name{font-size:18px;font-weight:800}
+.sr-meta{font-size:13px;color:var(--muted);margin-top:3px}
+.sr-badges{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.sr-total-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--muted);margin-bottom:2px;text-align:right}
+.sr-total{font-family:var(--mono);font-size:32px;font-weight:700;color:var(--accent)}
+
+/* Prices */
+.prices-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:12px}
+.price-item label{font-size:12px;font-family:var(--mono);font-weight:700;color:var(--accent);margin-bottom:4px}
+.price-name{font-size:10px;color:var(--muted);margin-bottom:5px;font-family:var(--mono)}
+
+/* Toast */
+.toast-wrap{position:fixed;bottom:24px;right:24px;z-index:999}
+.toast{background:var(--surface);border:1px solid var(--border);border-radius:10px;padding:12px 16px;font-size:13px;font-weight:600;margin-top:8px;display:flex;align-items:center;gap:8px;transform:translateY(20px);opacity:0;transition:all .25s;min-width:260px}
+.toast.show{transform:translateY(0);opacity:1}
+.toast.t-success{border-left:3px solid var(--green)}
+.toast.t-error{border-left:3px solid var(--red)}
+::-webkit-scrollbar{width:4px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--border);border-radius:4px}
+</style>
+</head>
+<body>
+
+<div id="loading"><div class="spinner"></div><div style="font-size:12px;color:var(--muted);font-family:var(--mono)">PACKTRACK ADMIN</div></div>
+
+<div id="login-view" class="hidden">
+  <div class="login-card">
+    <div class="login-tag">PackTrack Admin</div>
+    <h1 class="login-title">Admin Login</h1>
+    <p class="login-sub">K&H Wholesale Trading</p>
+    <div class="field"><label>Password</label><input type="password" id="l-pass" placeholder="••••••" autocomplete="current-password"></div>
+    <button class="btn btn-primary" style="width:100%;padding:11px" onclick="doLogin()">Sign In</button>
+    <div id="l-err" class="alert-box hidden"></div>
+  </div>
+</div>
+
+<div id="admin-view">
+  <div class="sidebar">
+    <div class="sb-brand">
+      <div class="sb-tag">PackTrack</div>
+      <div class="sb-name">Admin Panel</div>
+      <div class="sb-company">K&H Wholesale Trading</div>
+      <div style="font-family:var(--mono);font-size:10px;color:var(--muted);margin-top:8px">v3.06</div>
+    </div>
+    <div class="sb-menu">
+      <div class="sm-item active" onclick="goTab('dashboard',this)"><span class="sm-icon">◈</span>Dashboard</div>
+      <div class="sm-item" onclick="goTab('employees',this)"><span class="sm-icon">◎</span>Employees</div>
+      <div class="sm-item" onclick="goTab('products',this)"><span class="sm-icon">▦</span>Products</div>
+      <div class="sm-item" onclick="goTab('prices',this)"><span class="sm-icon">◆</span>Work Type Prices</div>
+      <div class="sm-item" onclick="goTab('salary',this)"><span class="sm-icon">◇</span>Salary Report</div>
+      <div class="sm-item" onclick="goTab('records',this)"><span class="sm-icon">≡</span>All Records</div>
+      <div class="sm-item" onclick="goTab('attendance',this)"><span class="sm-icon">✓</span>Attendance</div>
+      <div class="sm-item" onclick="goTab('attsettings',this)"><span class="sm-icon">⚙</span>Att. Settings</div>
+    </div>
+    <div class="sb-footer"><button class="sm-logout" onclick="doLogout()">↩ Logout</button></div>
+  </div>
+
+  <div class="main-area">
+    <div class="main-inner">
+
+      <!-- DASHBOARD -->
+      <div id="tab-dashboard" class="pc-panel active">
+        <div class="page-header"><div><h1>Dashboard</h1><p>Packaging department overview</p></div></div>
+        <div class="stats-row" id="dash-stats"></div>
+        <div class="card">
+          <div class="card-header"><h3>Recent Records</h3></div>
+          <div class="tbl-wrap"><table><thead><tr><th>Employee</th><th>Product</th><th>Work Type</th><th>Qty</th><th>Rate</th><th>Earnings</th><th>Date</th></tr></thead><tbody id="dash-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- EMPLOYEES -->
+      <div id="tab-employees" class="pc-panel">
+        <div class="page-header">
+          <div><h1>Employees</h1><p>Packaging department staff</p></div>
+          <div class="btn-row">
+            <button class="btn btn-ghost" onclick="openModal('emp-import-modal')">↑ Import CSV</button>
+            <button class="btn btn-primary" onclick="openEmpModal()">+ Add Employee</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Staff List</h3><span id="emp-count" style="font-size:12px;color:var(--muted)"></span></div>
+          <div class="tbl-wrap"><table><thead><tr><th>Name</th><th>ID</th><th>Password</th><th>Status</th><th>Records</th><th></th></tr></thead><tbody id="emp-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- PRODUCTS -->
+      <div id="tab-products" class="pc-panel">
+        <div class="page-header">
+          <div><h1>Products</h1><p>Central product database (/products)</p></div>
+          <div class="btn-row">
+            <button class="btn btn-danger" onclick="clearAllProducts()">✕ Clear All</button>
+            <button class="btn btn-ghost" onclick="openModal('prod-import-modal')">↑ Import CSV</button>
+            <button class="btn btn-primary" onclick="openProductModal()">+ Add Product</button>
+          </div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Product List</h3><span id="prod-count" style="font-size:12px;color:var(--muted)"></span></div>
+          <div class="search-bar"><span class="search-icon">⌕</span><input type="text" id="prod-search" placeholder="Search by name or barcode..." oninput="filterProducts()"></div>
+          <div class="tbl-wrap"><table><thead><tr><th>Barcode</th><th>Code</th><th>Product Name</th><th>Status</th><th></th></tr></thead><tbody id="prod-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- PRICES -->
+      <div id="tab-prices" class="pc-panel">
+        <div class="page-header"><div><h1>Work Type Prices</h1><p>Rate per piece (RM)</p></div></div>
+        <div class="card">
+          <div class="card-header"><h3>Current Prices</h3></div>
+          <div class="card-body">
+            <div class="prices-grid" id="prices-grid"></div>
+            <div style="margin-top:20px;display:flex;justify-content:flex-end"><button class="btn btn-primary" onclick="savePrices()">Save Prices</button></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- SALARY -->
+      <div id="tab-salary" class="pc-panel">
+        <div class="page-header">
+          <div><h1>Salary Report</h1><p>Calculate earnings by employee and date range</p></div>
+          <div style="display:flex;gap:8px;align-items:center;">
+            <div class="fb-status" id="sal-fb-status"><div class="fb-dot" id="sal-fb-dot"></div><span id="sal-fb-text">Connecting...</span></div>
+            <button class="btn btn-ghost" onclick="refreshSalary()">↻ Refresh</button>
+            <button class="btn btn-ghost" onclick="exportSalaryCSV()">⬇ Export CSV</button>
+          </div>
+        </div>
+        <div class="sal-toolbar">
+          <select id="sal-emp" style="padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-family:var(--sans);font-size:13px;color:var(--text);outline:none;min-width:180px;"></select>
+          <div class="drp-wrap" id="salDrpWrap">
+            <button class="drp-btn" onclick="toggleSalDrp()">
+              <span id="salDrpLabel">This Month</span>
+              <span class="drp-ico">📅</span>
+            </button>
+            <div class="drp-dropdown" id="salDrpDropdown">
+              <div class="drp-option" data-range="today" onclick="selectSalRange('today')">Today</div>
+              <div class="drp-option" data-range="yesterday" onclick="selectSalRange('yesterday')">Yesterday</div>
+              <div class="drp-option active" data-range="month" onclick="selectSalRange('month')">This Month</div>
+              <div class="drp-option" data-range="lastmonth" onclick="selectSalRange('lastmonth')">Last Month</div>
+              <div class="drp-option" data-range="custom" onclick="selectSalRange('custom')">Custom Range</div>
+              <div class="drp-custom" id="salDrpCustom">
+                <div class="drp-custom-label">SELECT DATE RANGE</div>
+                <div class="drp-custom-row">
+                  <input type="date" class="drp-custom-inp" id="salDrpFrom">
+                  <span style="color:var(--muted);font-size:12px;">to</span>
+                  <input type="date" class="drp-custom-inp" id="salDrpTo">
+                  <button class="drp-apply" onclick="applySalCustomRange()">Apply</button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div id="sal-result"></div>
+      </div>
+
+      <!-- RECORDS -->
+      <div id="tab-records" class="pc-panel">
+        <div class="page-header"><div><h1>All Records</h1><p>Complete packaging work log</p></div></div>
+        <div class="sal-filters">
+          <div class="sal-field"><label>Employee</label><select id="rec-emp"></select></div>
+          <div class="sal-field"><label>Date</label><input type="date" id="rec-date"></div>
+          <div class="sal-field"><label>Work Type</label><select id="rec-wt"></select></div>
+          <button class="btn btn-ghost" onclick="filterRecords()">Filter</button>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Records</h3><span id="rec-count" style="font-size:12px;color:var(--muted)"></span></div>
+          <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Employee</th><th>Product</th><th>Work Type</th><th>Qty</th><th>Rate</th><th>Earnings</th><th>Time</th></tr></thead><tbody id="rec-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+      <!-- ATTENDANCE -->
+      <div id="tab-attendance" class="pc-panel">
+        <div class="page-header">
+          <div><h1>Daily Attendance</h1><p>Check who is absent or missed clock-out today</p></div>
+          <div class="btn-row">
+            <input type="date" id="att-date" style="padding:9px 12px;background:var(--surface);border:1px solid var(--border);border-radius:10px;font-family:var(--mono);font-size:13px;color:var(--text);outline:none;width:auto" onchange="runAttendanceCheck()">
+            <button class="btn btn-ghost" onclick="runAttendanceCheck()">↻ Refresh</button>
+          </div>
+        </div>
+        <div class="stats-row" id="att-stats"></div>
+        <div class="card" id="att-absent-card" style="display:none">
+          <div class="card-header"><h3 style="color:var(--red)">&#9888; Absent — No clock-in recorded</h3><span id="att-absent-count" style="font-size:12px;color:var(--muted)"></span></div>
+          <div class="tbl-wrap"><table><thead><tr><th>Employee</th><th>ID</th><th>Department</th></tr></thead><tbody id="att-absent-tbody"></tbody></table></div>
+        </div>
+        <div class="card" id="att-nocout-card" style="display:none">
+          <div class="card-header"><h3 style="color:var(--accent)">&#9888; Missing Clock-Out</h3><span id="att-nocout-count" style="font-size:12px;color:var(--muted)"></span></div>
+          <div class="tbl-wrap"><table><thead><tr><th>Employee</th><th>ID</th><th>Clocked In</th><th>Hours So Far</th></tr></thead><tbody id="att-nocout-tbody"></tbody></table></div>
+        </div>
+        <div id="att-ok-msg" class="hidden" style="text-align:center;padding:60px 20px;color:var(--green);font-size:16px;font-weight:700">&#10003; All required employees clocked in and out for this date.</div>
+        <div id="att-loading" style="text-align:center;padding:60px 20px;color:var(--muted)">Select a date to check attendance.</div>
+      </div>
+
+      <!-- ATTENDANCE SETTINGS -->
+      <div id="tab-attsettings" class="pc-panel">
+        <div class="page-header">
+          <div><h1>Attendance Settings</h1><p>Toggle which employees are required to clock in/out</p></div>
+          <div id="atts-saved-badge" class="hidden" style="font-size:12px;color:var(--green);font-weight:700">&#10003; Saved</div>
+        </div>
+        <div class="card">
+          <div class="card-header"><h3>Clock-In Required</h3><span style="font-size:12px;color:var(--muted)">Default: OFF — toggle ON for employees that must clock in daily</span></div>
+          <div class="tbl-wrap"><table><thead><tr><th>Employee</th><th>ID</th><th>Department</th><th style="text-align:center">Requires Clock-In</th></tr></thead><tbody id="atts-tbody"></tbody></table></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add/Edit Employee -->
+<div class="modal-overlay" id="emp-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('emp-modal')">✕</button>
+    <h2 id="emp-modal-title">Add Employee</h2>
+    <p class="modal-sub">Packaging department staff</p>
+    <input type="hidden" id="emp-edit-key">
+    <div class="grid-2">
+      <div class="field"><label>Full Name</label><input type="text" id="emp-name" placeholder="ALI BIN HASSAN"></div>
+      <div class="field"><label>Employee ID</label><input type="text" id="emp-id" placeholder="V001" style="font-family:var(--mono)"></div>
+    </div>
+    <div class="grid-2">
+      <div class="field"><label>IC / Passport</label><input type="text" id="emp-ic" placeholder="900101-01-1234"></div>
+      <div class="field"><label>Password</label><input type="text" id="emp-pass" placeholder="Password" autocomplete="off" style="font-family:var(--mono)"></div>
+    </div>
+    <div class="field"><label>Status</label><select id="emp-active"><option value="true">Active</option><option value="false">Inactive</option></select></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('emp-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveEmployee()">Save Employee</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Import Employees CSV -->
+<div class="modal-overlay" id="emp-import-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('emp-import-modal')">✕</button>
+    <h2>Import Employees</h2>
+    <p class="modal-sub">Bulk add packaging staff from CSV</p>
+    <label class="csv-upload-label">
+      <input type="file" id="emp-csv-input" accept=".csv,.txt" onclick="this.value=''" onchange="handleEmpCSV(this)">
+      <div style="font-size:28px;opacity:.3;margin-bottom:8px">↑</div>
+      <div style="font-size:14px;font-weight:700">Click to select CSV file</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">id, name, ic, password</div>
+    </label>
+    <div class="csv-hint">id,name,ic,password<br>V001,ALI BIN HASSAN,900101-01-1234,1234</div>
+    <div id="emp-import-preview" class="hidden">
+      <div class="csv-count" id="emp-import-count"></div>
+      <div class="csv-preview" id="emp-import-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('emp-import-modal')">Cancel</button>
+      <button class="btn btn-primary hidden" id="emp-import-btn" onclick="doEmpImport()">Import Employees</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Add/Edit Product -->
+<div class="modal-overlay" id="prod-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('prod-modal')">✕</button>
+    <h2 id="prod-modal-title">Add Product</h2>
+    <p class="modal-sub">Central products database (/products)</p>
+    <input type="hidden" id="prod-edit-key">
+    <div class="grid-2">
+      <div class="field"><label>Barcode</label><input type="text" id="p-barcode" placeholder="8993175542241" style="font-family:var(--mono)" inputmode="numeric"></div>
+      <div class="field"><label>Product Code</label><input type="text" id="p-code" placeholder="D153612" style="font-family:var(--mono)"></div>
+    </div>
+    <div class="field"><label>Product Name</label><input type="text" id="p-name" placeholder="NABATI PINK LAWA 38G"></div>
+    <div class="grid-2">
+      <div class="field"><label>NINSO CTN</label><input type="text" id="p-ninso-ctn"></div>
+      <div class="field"><label>PACKSIZE (Supplier)</label><input type="text" id="p-packsize-supplier"></div>
+      <div class="field"><label>TOTAL PCS (Supplier)</label><input type="text" id="p-total-pcs-supplier"></div>
+      <div class="field"><label>RP Unit</label><input type="text" id="p-rp-unit"></div>
+      <div class="field"><label>PACKSIZE (Ninso)</label><input type="text" id="p-packsize-ninso"></div>
+      <div class="field"><label>TOTAL PCS (Ninso)</label><input type="text" id="p-total-pcs-ninso"></div>
+      <div class="field"><label>PACKING MATERIAL</label><input type="text" id="p-packing-material"></div>
+      <div class="field"><label>OUTER</label><input type="text" id="p-outer"></div>
+    </div>
+    <div class="field"><label>Status</label><select id="p-active"><option value="true">Active</option><option value="false">Inactive</option></select></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('prod-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveProduct()">Save Product</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Import Products CSV -->
+<div class="modal-overlay" id="prod-import-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('prod-import-modal')">✕</button>
+    <h2>Import Products</h2>
+    <p class="modal-sub">Upload CSV exported from Excel</p>
+    <label class="csv-upload-label">
+      <input type="file" id="prod-csv-input" accept=".csv,.txt" onclick="this.value=''" onchange="handleProdCSV(this)">
+      <div style="font-size:28px;opacity:.3;margin-bottom:8px">↑</div>
+      <div style="font-size:14px;font-weight:700">Click to select CSV file</div>
+      <div style="font-size:12px;color:var(--muted);margin-top:4px">Code, Name, Barcode, NINSO CTN, ...</div>
+    </label>
+    <div class="csv-hint">Code,Name,Barcode,NINSO CTN,PACKSIZE(Supplier),TOTAL PCS(Supplier),RP Unit,PACKSIZE(Ninso),TOTAL PCS(Ninso),PACKING MATERIAL,OUTER<br>D120012,RICHOCO NABATI...,8993175535885,1,60,60,3,20,1,TAPE,ORIGINAL</div>
+    <div id="prod-import-preview" class="hidden">
+      <div class="csv-count" id="prod-import-count"></div>
+      <div class="csv-preview" id="prod-import-list"></div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('prod-import-modal')">Cancel</button>
+      <button class="btn btn-primary hidden" id="prod-import-btn" onclick="doProdImport()">Import Products</button>
+    </div>
+  </div>
+</div>
+
+<!-- MODAL: Edit PackTrack Record -->
+<div class="modal-overlay" id="rec-edit-modal">
+  <div class="modal-box">
+    <button class="modal-close" onclick="closeModal('rec-edit-modal')">✕</button>
+    <h2>Edit Record</h2>
+    <p class="modal-sub" id="rec-edit-sub">Modify this packaging work entry</p>
+    <input type="hidden" id="rec-edit-key">
+    <div class="grid-2">
+      <div class="field"><label>Employee</label><select id="re-emp"></select></div>
+      <div class="field"><label>Date</label><input type="date" id="re-date"></div>
+    </div>
+    <div class="field"><label>Product</label><select id="re-product"></select></div>
+    <div class="grid-2">
+      <div class="field"><label>Work Type</label><select id="re-wt"></select></div>
+      <div class="field"><label>Quantity (pcs)</label><input type="number" id="re-qty" min="1" inputmode="numeric"></div>
+    </div>
+    <div class="field"><label>Rate (RM/pc)</label><input type="number" id="re-rate" step="0.001" min="0" readonly style="background:var(--surface2);color:var(--muted);"></div>
+    <div style="background:var(--accent-bg);border:1px solid rgba(240,136,62,.3);border-radius:10px;padding:12px 16px;display:flex;justify-content:space-between;align-items:center;margin-top:4px;">
+      <span style="font-size:13px;color:var(--muted);">Earnings</span>
+      <span style="font-family:var(--mono);font-size:22px;font-weight:700;color:var(--accent);" id="re-earn-preview">RM 0.00</span>
+    </div>
+    <div id="re-err" style="color:var(--red);font-size:12px;min-height:16px;margin-top:8px;"></div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="closeModal('rec-edit-modal')">Cancel</button>
+      <button class="btn btn-primary" onclick="saveRecordEdit()">Save Changes</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toast-wrap"></div>
+
+<script>
+// ── Firebase ──────────────────────────────────────────────────────────────────
+firebase.initializeApp({
+  apiKey:"AIzaSyBdMdNTmGW3S-8Yld2XFSPpnbMtEnmaDaY",
+  authDomain:"clockin-82306.firebaseapp.com",
+  databaseURL:"https://clockin-82306-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId:"clockin-82306",
+  storageBucket:"clockin-82306.firebasestorage.app",
+  messagingSenderId:"1072015314964",
+  appId:"1:1072015314964:web:e1d9b92d1c2afea84c9701"
+});
+const db = firebase.database();
+
+// ── Constants ─────────────────────────────────────────────────────────────────
+const WORK_TYPES = [
+  {code:'L', name:'LABELING'},
+  {code:'PB',name:'PACKING IN THE BEG'},
+  {code:'PF',name:'PACKING FULL'},
+  {code:'PO',name:'PACKING ONION'},
+  {code:'S', name:'SEALING'},
+  {code:'T', name:'TAPE'},
+  {code:'TM',name:'TAPE WITH MACHINE'},
+  {code:'WB',name:'WEIGH BEANS'},
+  {code:'WO',name:'WEIGHING ONION'},
+  {code:'WH',name:'WORKING HOURS'},
+  {code:'SB',name:'SIDE BAG'},
+];
+const DEFAULT_PRICES = {L:.010,PB:.020,PF:.080,PO:.040,S:.020,T:.030,TM:.025,WB:.070,WO:.060,WH:8.00,SB:.050};
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let allEmployees = {}, allProducts = {}, allRecords = [], prices = {...DEFAULT_PRICES};
+let empImportData = [], prodImportData = [];
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+const fmt = n => 'RM ' + parseFloat(n||0).toFixed(2);
+const getToday = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); };
+const getMonth = () => { const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); };
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+async function init() {
+  document.getElementById('loading').classList.add('hidden');
+  document.getElementById('login-view').classList.remove('hidden');
+}
+
+// ── Login ─────────────────────────────────────────────────────────────────────
+function doLogin() {
+  const pass = document.getElementById('l-pass').value.trim();
+  const errEl = document.getElementById('l-err');
+  if (!pass) { errEl.textContent='Enter password'; errEl.classList.remove('hidden'); return; }
+  db.ref('hr_employees').get().then(snap => {
+    let found = null;
+    if (snap.exists()) snap.forEach(c => {
+      const e = c.val();
+      if (e.password === pass && e.role === 'admin' && e.active !== false) found = e;
+    });
+    if (found) { loginSuccess(); }
+    else { errEl.textContent='Invalid password.'; errEl.classList.remove('hidden'); }
+  }).catch(() => { errEl.textContent='Connection error.'; errEl.classList.remove('hidden'); });
+}
+
+async function loginSuccess() {
+  document.getElementById('login-view').classList.add('hidden');
+  document.getElementById('admin-view').style.display = 'flex';
+  await loadAll();
+  loadAttSettings();
+  renderDashboard();
+}
+
+function doLogout() {
+  document.getElementById('admin-view').style.display = 'none';
+  document.getElementById('login-view').classList.remove('hidden');
+  document.getElementById('l-pass').value = '';
+  document.getElementById('l-err').classList.add('hidden');
+}
+
+// ── Load All Data ─────────────────────────────────────────────────────────────
+async function loadAll() {
+  try {
+    const [eSnap, pSnap, rSnap, prSnap] = await Promise.all([
+      db.ref('hr_employees').get(),
+      db.ref('products').get(),
+      db.ref('packtrack/pt_records').get(),
+      db.ref('packtrack/settings/prices').get()
+    ]);
+    allEmployees = {};
+    if (eSnap.exists()) eSnap.forEach(c => { const e=c.val(); if(e.department==='packaging'||e.department==='all') allEmployees[c.key]=e; });
+    allProducts = pSnap.exists() ? pSnap.val() : {};
+    allRecords = [];
+    if (rSnap.exists()) rSnap.forEach(c => { allRecords.push({_key:c.key,...c.val()}); });
+    allRecords.sort((a,b) => b.timestamp - a.timestamp);
+    if (prSnap.exists()) prices = prSnap.val();
+  } catch(e) { toast('Load error: '+e.message,'error'); }
+}
+
+// ── Tab Navigation ────────────────────────────────────────────────────────────
+function goTab(tab, el) {
+  document.querySelectorAll('.sm-item').forEach(i => i.classList.remove('active'));
+  document.querySelectorAll('.pc-panel').forEach(p => p.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById('tab-'+tab).classList.add('active');
+  if (tab==='dashboard') renderDashboard();
+  if (tab==='employees') renderEmployees();
+  if (tab==='products') renderProducts();
+  if (tab==='prices') renderPrices();
+  if (tab==='salary') { salDrpFrom=null; salDrpTo=null; initSalDrp(); refreshSalary(); }
+  if (tab==='records') { stopSalaryListeners(); renderRecordFilters(); filterRecords(); }
+  if (tab==='attendance') initAttendancePage();
+  if (tab==='attsettings') renderAttSettings();
+  if (tab!=='salary') stopSalaryListeners();
+}
+
+// ── Dashboard ─────────────────────────────────────────────────────────────────
+function renderDashboard() {
+  const today = getToday();
+  const todayRecs = allRecords.filter(r => r.date === today);
+  const todayEarn = todayRecs.reduce((s,r) => s+r.earnings, 0);
+  document.getElementById('dash-stats').innerHTML = `
+    <div class="stat"><div class="stat-label">Today's Records</div><div class="stat-value green">${todayRecs.length}</div><div class="stat-sub">${today}</div></div>
+    <div class="stat featured"><div class="stat-label">Today's Payroll</div><div class="stat-value accent">${fmt(todayEarn)}</div></div>`;
+  document.getElementById('dash-tbody').innerHTML = allRecords.slice(0,15).map(r =>
+    `<tr><td><span class="emp-av">${(r.empName||'?')[0]}</span>${r.empName||r.empId}</td>
+    <td style="max-width:200px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.productName||''}</td>
+    <td><span class="badge badge-orange">${r.workType}</span></td>
+    <td style="font-family:var(--mono)">${r.qty}</td>
+    <td style="font-family:var(--mono);font-size:12px">${(r.rate||0).toFixed(3)}</td>
+    <td style="font-family:var(--mono);color:var(--green);font-weight:700">${fmt(r.earnings)}</td>
+    <td style="color:var(--muted);font-size:12px">${r.date||''}</td></tr>`
+  ).join('');
+}
+
+// ── Employees ─────────────────────────────────────────────────────────────────
+function renderEmployees() {
+  const emps = Object.entries(allEmployees);
+  document.getElementById('emp-count').textContent = emps.length + ' employees';
+  document.getElementById('emp-tbody').innerHTML = emps.map(([key,e]) => {
+    const recs = allRecords.filter(r => r.empId===e.id).length;
+    return `<tr>
+      <td><span class="emp-av">${(e.name||'?')[0]}</span><strong>${e.name}</strong></td>
+      <td style="font-family:var(--mono)">${e.id}</td>
+      <td style="font-family:var(--mono);color:var(--muted)">${e.password||''}</td>
+      <td><span class="badge ${e.active===false?'badge-red':'badge-green'}">${e.active===false?'Inactive':'Active'}</span></td>
+      <td style="font-family:var(--mono)">${recs}</td>
+      <td><button class="btn btn-ghost btn-sm" onclick="openEmpModal('${key}')">Edit</button></td></tr>`;
+  }).join('');
+}
+
+function openEmpModal(key=null) {
+  const e = key ? allEmployees[key] : null;
+  document.getElementById('emp-modal-title').textContent = e ? 'Edit Employee' : 'Add Employee';
+  document.getElementById('emp-edit-key').value = key||'';
+  document.getElementById('emp-name').value = e ? e.name : '';
+  document.getElementById('emp-id').value = e ? e.id : '';
+  document.getElementById('emp-id').readOnly = !!e;
+  document.getElementById('emp-ic').value = e ? e.ic||'' : '';
+  document.getElementById('emp-pass').value = e ? e.password||'' : '';
+  document.getElementById('emp-active').value = e ? (e.active===false?'false':'true') : 'true';
+  openModal('emp-modal');
+}
+
+async function saveEmployee() {
+  const key = document.getElementById('emp-edit-key').value;
+  const name = document.getElementById('emp-name').value.trim().toUpperCase();
+  const id = document.getElementById('emp-id').value.trim().toUpperCase();
+  const ic = document.getElementById('emp-ic').value.trim();
+  const pass = document.getElementById('emp-pass').value.trim();
+  const active = document.getElementById('emp-active').value === 'true';
+  if (!name||!id) { toast('Name and ID are required','error'); return; }
+  if (!pass) { toast('Password is required','error'); return; }
+  const data = {id,name,ic,password:pass,role:'staff',department:'packaging',active};
+  try {
+    if (key) { await db.ref('hr_employees/'+key).update(data); allEmployees[key]={...allEmployees[key],...data}; }
+    else { await db.ref('hr_employees/'+id).set(data); allEmployees[id]=data; }
+    toast(key?'Employee updated':'Employee added');
+    closeModal('emp-modal'); renderEmployees();
+  } catch(e) { toast('Save failed: '+e.message,'error'); }
+}
+
+// Employee CSV Import
+function handleEmpCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    const lines = e.target.result.split('\n').filter(l => l.trim());
+    empImportData = [];
+    lines.forEach((line, i) => {
+      if (i===0 && line.toLowerCase().includes('id')) return;
+      const parts = line.split(',').map(s => s.trim().replace(/^"|"$/g,'').replace(/\r/g,''));
+      if (parts.length>=2 && parts[0]) empImportData.push({
+        id: parts[0].toUpperCase(), name:(parts[1]||'').toUpperCase(),
+        ic:parts[2]||'', password:String(parts[3]||'1234')
+      });
+    });
+    document.getElementById('emp-import-count').textContent = empImportData.length + ' EMPLOYEES FOUND';
+    document.getElementById('emp-import-list').innerHTML = empImportData.map(e => `${e.id} | ${e.name} | ${e.password}`).join('<br>');
+    document.getElementById('emp-import-preview').classList.remove('hidden');
+    document.getElementById('emp-import-btn').classList.remove('hidden');
+  };
+  reader.readAsText(file);
+}
+
+async function doEmpImport() {
+  if (!empImportData.length) return;
+  const btn = document.getElementById('emp-import-btn');
+  btn.textContent='Importing...'; btn.disabled=true;
+  const updates = {};
+  empImportData.forEach(e => { updates['hr_employees/'+e.id]={id:e.id,name:e.name,ic:e.ic,password:e.password,role:'staff',department:'packaging',active:true}; });
+  try {
+    await db.ref().update(updates);
+    empImportData.forEach(e => { allEmployees[e.id]=updates['hr_employees/'+e.id]; });
+    toast(empImportData.length+' employees imported');
+    closeModal('emp-import-modal'); renderEmployees();
+  } catch(e) { toast('Import failed: '+e.message,'error'); }
+  btn.textContent='Import Employees'; btn.disabled=false;
+}
+
+// ── Products ──────────────────────────────────────────────────────────────────
+let prodPage = 1;
+const PROD_PER_PAGE = 30;
+let prodFiltered = [];
+
+function renderProducts() {
+  prodFiltered = Object.entries(allProducts);
+  prodPage = 1;
+  renderProdTable();
+}
+
+function renderProdTable() {
+  const total = prodFiltered.length;
+  const totalPages = Math.ceil(total / PROD_PER_PAGE) || 1;
+  if (prodPage > totalPages) prodPage = totalPages;
+  const start = (prodPage - 1) * PROD_PER_PAGE;
+  const pageItems = prodFiltered.slice(start, start + PROD_PER_PAGE);
+
+  document.getElementById('prod-count').textContent =
+    total + ' products · page ' + prodPage + ' / ' + totalPages;
+
+  document.getElementById('prod-tbody').innerHTML = pageItems.map(([key,p]) => {
+    const barcode = p.BARCODE||p.barcode||'-';
+    const code    = p.CODE||p.code||'-';
+    const name    = p.NAME||p.name||'-';
+    const shortName = name.length>35 ? name.slice(0,35)+'\u2026' : name;
+    return `<tr>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--accent);white-space:nowrap" title="${barcode}">${barcode}</td>
+      <td style="font-family:var(--mono);font-size:12px;color:var(--muted);white-space:nowrap" title="${code}">${code}</td>
+      <td style="max-width:280px" title="${name}">${shortName}</td>
+      <td><span class="badge ${p.active===false?'badge-red':'badge-green'}">${p.active===false?'Inactive':'Active'}</span></td>
+      <td><div style="display:flex;gap:6px;white-space:nowrap">
+        <button class="btn btn-ghost btn-sm" onclick="openProductModal('${key}')">Edit</button>
+        <button class="btn btn-danger btn-sm" onclick="removeProduct('${key}')">&times;</button>
+      </div></td></tr>`;
+  }).join('');
+
+  // Pagination controls
+  let pgHtml = `<div style="display:flex;align-items:center;justify-content:flex-end;gap:6px;padding:12px 18px;border-top:1px solid var(--border);font-size:12px;color:var(--muted)">`;
+  pgHtml += `<span>${start+1}–${Math.min(start+PROD_PER_PAGE,total)} of ${total}</span>`;
+  pgHtml += `<button onclick="changeProdPage(${prodPage-1})" class="btn btn-ghost btn-sm" ${prodPage<=1?'disabled':''} style="padding:4px 10px">&laquo;</button>`;
+  // show page buttons
+  for (let i=1;i<=totalPages;i++) {
+    if (totalPages<=7 || i===1 || i===totalPages || Math.abs(i-prodPage)<=1) {
+      pgHtml += `<button onclick="changeProdPage(${i})" class="btn btn-sm" style="padding:4px 10px;${i===prodPage?'background:var(--accent);color:#000;border:none':'background:var(--surface2);border:1px solid var(--border);color:var(--text)'}">${i}</button>`;
+    } else if (Math.abs(i-prodPage)===2) {
+      pgHtml += `<span style="color:var(--muted)">…</span>`;
+    }
+  }
+  pgHtml += `<button onclick="changeProdPage(${prodPage+1})" class="btn btn-ghost btn-sm" ${prodPage>=totalPages?'disabled':''} style="padding:4px 10px">&raquo;</button>`;
+  pgHtml += `</div>`;
+
+  // Inject or update pagination div
+  let pgEl = document.getElementById('prod-pagination');
+  if (!pgEl) {
+    pgEl = document.createElement('div');
+    pgEl.id = 'prod-pagination';
+    document.querySelector('#prod-tbody').closest('.tbl-wrap').after(pgEl);
+  }
+  pgEl.innerHTML = pgHtml;
+}
+
+function changeProdPage(page) {
+  const totalPages = Math.ceil(prodFiltered.length / PROD_PER_PAGE) || 1;
+  prodPage = Math.max(1, Math.min(page, totalPages));
+  renderProdTable();
+}
+
+function filterProducts() {
+  const q = document.getElementById('prod-search').value.toLowerCase();
+  prodFiltered = Object.entries(allProducts).filter(([k,p]) =>
+    !q || (p.NAME||p.name||'').toLowerCase().includes(q) ||
+    (p.BARCODE||p.barcode||'').includes(q) ||
+    (p.CODE||p.code||'').toLowerCase().includes(q) ||
+    k.toLowerCase().includes(q)
+  );
+  prodPage = 1;
+  renderProdTable();
+}
+
+function openProductModal(key=null) {
+  const p = key ? allProducts[key] : null;
+  document.getElementById('prod-modal-title').textContent = p ? 'Edit Product' : 'Add Product';
+  document.getElementById('prod-edit-key').value = key||'';
+  document.getElementById('p-barcode').value = p ? (p.BARCODE||p.barcode||'') : '';
+  document.getElementById('p-barcode').readOnly = false;
+  document.getElementById('p-barcode').style.opacity = '1';
+  document.getElementById('p-code').value = p ? (p.CODE||p.code||'') : '';
+  document.getElementById('p-name').value = p ? (p.NAME||p.name||'') : '';
+  document.getElementById('p-ninso-ctn').value = p ? (p.NINSO_CTN||'') : '';
+  document.getElementById('p-packsize-supplier').value = p ? (p.PACKSIZE_SUPPLIER||'') : '';
+  document.getElementById('p-total-pcs-supplier').value = p ? (p.TOTAL_PCS_SUPPLIER||'') : '';
+  document.getElementById('p-rp-unit').value = p ? (p.RP_UNIT||'') : '';
+  document.getElementById('p-packsize-ninso').value = p ? (p.PACKSIZE_NINSO||'') : '';
+  document.getElementById('p-total-pcs-ninso').value = p ? (p.TOTAL_PCS_NINSO||'') : '';
+  document.getElementById('p-packing-material').value = p ? (p.PACKING_MATERIAL||'') : '';
+  document.getElementById('p-outer').value = p ? (p.OUTER||'') : '';
+  document.getElementById('p-active').value = p ? (p.active===false?'false':'true') : 'true';
+  openModal('prod-modal');
+}
+
+async function saveProduct() {
+  const key = document.getElementById('prod-edit-key').value;
+  const barcode = document.getElementById('p-barcode').value.trim();
+  const code = document.getElementById('p-code').value.trim().toUpperCase();
+  const name = document.getElementById('p-name').value.trim().toUpperCase();
+  const ninsoCtn = document.getElementById('p-ninso-ctn').value.trim();
+  const packsizeSupplier = document.getElementById('p-packsize-supplier').value.trim();
+  const totalPcsSupplier = document.getElementById('p-total-pcs-supplier').value.trim();
+  const rpUnit = document.getElementById('p-rp-unit').value.trim();
+  const packsizeNinso = document.getElementById('p-packsize-ninso').value.trim();
+  const totalPcsNinso = document.getElementById('p-total-pcs-ninso').value.trim();
+  const packingMaterial = document.getElementById('p-packing-material').value.trim().toUpperCase();
+  const outer = document.getElementById('p-outer').value.trim().toUpperCase();
+  const active = document.getElementById('p-active').value === 'true';
+  if (!barcode||!name) { toast('Barcode and name are required','error'); return; }
+  const dbKey = barcode.replace(/[.#$[\]]/g,'_');
+  const duplicate = Object.entries(allProducts).find(([k,p]) =>
+    k !== key && String(p.BARCODE||p.barcode||'') === barcode
+  );
+  if (duplicate) { toast('This barcode already belongs to another product','error'); return; }
+  const oldProduct = key ? (allProducts[key]||{}) : {};
+  const data = {...oldProduct,CODE:code,NAME:name,BARCODE:barcode,NINSO_CTN:ninsoCtn,PACKSIZE_SUPPLIER:packsizeSupplier,TOTAL_PCS_SUPPLIER:totalPcsSupplier,RP_UNIT:rpUnit,PACKSIZE_NINSO:packsizeNinso,TOTAL_PCS_NINSO:totalPcsNinso,PACKING_MATERIAL:packingMaterial,OUTER:outer,active};
+  try {
+    await db.ref('products/'+dbKey).set(data);
+    if (key && key !== dbKey) await db.ref('products/'+key).remove();
+    if (key && key !== dbKey) delete allProducts[key];
+    allProducts[dbKey] = data;
+    toast(key?'Product updated':'Product added');
+    closeModal('prod-modal'); renderProducts();
+  } catch(e) { toast('Save failed: '+e.message,'error'); }
+}
+
+async function removeProduct(key) {
+  const p = allProducts[key];
+  if (!p) return;
+  if (!confirm('Remove "'+( p.NAME||p.name)+'"?')) return;
+  try {
+    await db.ref('products/'+key).remove();
+    delete allProducts[key];
+    toast('Product removed');
+    renderProducts();
+  } catch(e) { toast('Remove failed: '+e.message,'error'); }
+}
+
+async function clearAllProducts() {
+  if (!confirm('Clear ALL products? This cannot be undone.')) return;
+  try {
+    await db.ref('products').remove();
+    allProducts = {};
+    toast('All products cleared');
+    renderProducts();
+  } catch(e) { toast('Clear failed: '+e.message,'error'); }
+}
+
+// Product CSV Import
+function handleProdCSV(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    // Remove BOM and split lines
+    const text = e.target.result.replace(/^\uFEFF/,'');
+    const lines = text.split('\n').filter(l => l.trim());
+    prodImportData = [];
+    let hasScientific = false;
+    lines.forEach((line, i) => {
+      if (i===0) return; // skip header
+      const parts = line.split(',').map(s => s.trim().replace(/^"|"$/g,'').replace(/\r/g,''));
+      if (parts.length < 3 || !parts[2]) return;
+      const barcode = parts[2];
+      // Skip if barcode looks like scientific notation
+      if (barcode.includes('E+') || barcode.includes('e+')) {
+        hasScientific = true;
+        return; // skip this row
+      }
+      prodImportData.push({
+        CODE:  (parts[0]||'').toUpperCase(),
+        NAME:  (parts[1]||'').toUpperCase(),
+        BARCODE: parts[2],
+        NINSO_CTN: parts[3]||'',
+        PACKSIZE_SUPPLIER: parts[4]||'',
+        TOTAL_PCS_SUPPLIER: parts[5]||'',
+        RP_UNIT: parts[6]||'',
+        PACKSIZE_NINSO: parts[7]||'',
+        TOTAL_PCS_NINSO: parts[8]||'',
+        PACKING_MATERIAL: (parts[9]||'').toUpperCase(),
+        OUTER: (parts[10]||'').toUpperCase(),
+        active: true
+      });
+    });
+    if (hasScientific) toast('Warning: Some barcodes are in scientific notation and were skipped. In Excel, select Barcode column → Format Cells → Text, then re-save CSV.', 'error');
+    document.getElementById('prod-import-count').textContent = prodImportData.length + ' PRODUCTS FOUND';
+    document.getElementById('prod-import-list').innerHTML = prodImportData.slice(0,30).map(p =>
+      `${p.BARCODE} | ${p.CODE} | ${p.NAME}`
+    ).join('<br>');
+    document.getElementById('prod-import-preview').classList.remove('hidden');
+    document.getElementById('prod-import-btn').classList.remove('hidden');
+  };
+  reader.readAsText(file);
+}
+
+async function doProdImport() {
+  if (!prodImportData.length) return;
+  const btn = document.getElementById('prod-import-btn');
+  btn.textContent='Importing...'; btn.disabled=true;
+  const updates = {};
+  prodImportData.forEach(p => {
+    if (!p.BARCODE) return;
+    const key = p.BARCODE.replace(/[.#$[\]]/g,'_');
+    updates['products/'+key] = p;
+  });
+  try {
+    await db.ref().update(updates);
+    Object.entries(updates).forEach(([k,v]) => { allProducts[k.replace('products/','')] = v; });
+    toast(prodImportData.length+' products imported');
+    closeModal('prod-import-modal');
+    renderProducts();
+  } catch(e) { toast('Import failed: '+e.message,'error'); }
+  btn.textContent='Import Products'; btn.disabled=false;
+}
+
+// ── Work Type Prices ──────────────────────────────────────────────────────────
+function renderPrices() {
+  document.getElementById('prices-grid').innerHTML = WORK_TYPES.map(wt =>
+    `<div class="price-item">
+      <label>${wt.code}</label>
+      <div class="price-name">${wt.name}</div>
+      <input type="number" id="pr-${wt.code}" step="0.001" min="0" value="${(prices[wt.code]||0).toFixed(3)}" style="text-align:center;font-family:var(--mono)">
+    </div>`
+  ).join('');
+}
+
+async function savePrices() {
+  const np = {};
+  WORK_TYPES.forEach(wt => { np[wt.code] = parseFloat(document.getElementById('pr-'+wt.code).value)||0; });
+  try { await db.ref('packtrack/settings/prices').set(np); prices=np; toast('Prices saved'); }
+  catch(e) { toast('Save failed: '+e.message,'error'); }
+}
+
+// ── Salary Report ────────────────────────────────────────────────────────────────────────────────
+let salDrpFrom=null, salDrpTo=null, salDrpRange='month';
+
+function localDateStr(d) {
+  return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+}
+
+function initSalDrp() {
+  if (salDrpFrom && salDrpTo) return;
+  const now = new Date();
+  salDrpFrom = localDateStr(new Date(now.getFullYear(), now.getMonth(), 1));
+  salDrpTo   = localDateStr(new Date(now.getFullYear(), now.getMonth()+1, 0));
+  updateSalDrpLabel();
+  updateSalFbStatus();
+}
+
+function updateSalFbStatus() {
+  const dot  = document.getElementById('sal-fb-dot');
+  const text = document.getElementById('sal-fb-text');
+  if (!dot||!text) return;
+  dot.classList.add('connected');
+  text.textContent = 'Firebase connected';
+}
+
+function toggleSalDrp() {
+  document.getElementById('salDrpDropdown').classList.toggle('open');
+}
+
+function selectSalRange(range) {
+  salDrpRange = range;
+  const now   = new Date();
+  const today = localDateStr(now);
+  document.querySelectorAll('#salDrpDropdown .drp-option').forEach(o => o.classList.remove('active'));
+  document.querySelector(`#salDrpDropdown [data-range="${range}"]`).classList.add('active');
+  const custom = document.getElementById('salDrpCustom');
+  if (range==='custom') { custom.classList.add('show'); return; }
+  custom.classList.remove('show');
+  document.getElementById('salDrpDropdown').classList.remove('open');
+  if (range==='today')     { salDrpFrom=today; salDrpTo=today; }
+  else if (range==='yesterday') { const y=new Date(now); y.setDate(y.getDate()-1); salDrpFrom=localDateStr(y); salDrpTo=localDateStr(y); }
+  else if (range==='month')    { salDrpFrom=localDateStr(new Date(now.getFullYear(),now.getMonth(),1)); salDrpTo=localDateStr(new Date(now.getFullYear(),now.getMonth()+1,0)); }
+  else if (range==='lastmonth'){ salDrpFrom=localDateStr(new Date(now.getFullYear(),now.getMonth()-1,1)); salDrpTo=localDateStr(new Date(now.getFullYear(),now.getMonth(),0)); }
+  updateSalDrpLabel();
+  calcSalary();
+}
+
+function applySalCustomRange() {
+  const f = document.getElementById('salDrpFrom').value;
+  const t = document.getElementById('salDrpTo').value;
+  if (!f||!t) { toast('Select both dates','error'); return; }
+  salDrpFrom=f; salDrpTo=t;
+  document.getElementById('salDrpDropdown').classList.remove('open');
+  document.getElementById('salDrpCustom').classList.remove('show');
+  updateSalDrpLabel();
+  calcSalary();
+}
+
+function updateSalDrpLabel() {
+  const labels = {today:'Today',yesterday:'Yesterday',month:'This Month',lastmonth:'Last Month'};
+  const el = document.getElementById('salDrpLabel');
+  if (!el) return;
+  el.textContent = salDrpRange==='custom' ? `${salDrpFrom} → ${salDrpTo}` : (labels[salDrpRange]||salDrpFrom);
+}
+
+document.addEventListener('click', e => {
+  if (!e.target.closest('#salDrpWrap')) document.getElementById('salDrpDropdown')?.classList.remove('open');
+});
+
+function renderSalaryFilters() {
+  const emps = Object.values(allEmployees);
+  document.getElementById('sal-emp').innerHTML =
+    '<option value="">All Employees</option>' +
+    emps.map(e => `<option value="${e.id}">${e.name}</option>`).join('');
+}
+
+function initDates() {
+  initSalDrp();
+  calcSalary();
+}
+
+let _salRecordsListener = null;
+let _salEmpsListener = null;
+
+function refreshSalary() {
+  const dot  = document.getElementById('sal-fb-dot');
+  const text = document.getElementById('sal-fb-text');
+  const area = document.getElementById('sal-result');
+  if(text) text.textContent = 'Connecting...';
+  if(dot) dot.classList.remove('connected');
+  if(area) area.innerHTML = '<div style="text-align:center;padding:40px;color:var(--muted)">Loading records...</div>';
+
+  // Remove old listeners if exist
+  if(_salRecordsListener) { db.ref('packtrack/pt_records').off('value', _salRecordsListener); _salRecordsListener=null; }
+  if(_salEmpsListener)    { db.ref('hr_employees').off('value', _salEmpsListener); _salEmpsListener=null; }
+
+  // Real-time listener for employees
+  _salEmpsListener = db.ref('hr_employees').on('value', empSnap => {
+    allEmployees = {};
+    if (empSnap.exists()) empSnap.forEach(c => {
+      const e=c.val();
+      if(e.department==='packaging'||e.department==='all') allEmployees[c.key]=e;
+    });
+    renderSalaryFilters();
+  }, err => { if(text) text.textContent='Firebase error'; });
+
+  // Real-time listener for records
+  _salRecordsListener = db.ref('packtrack/pt_records').on('value', rSnap => {
+    allRecords = [];
+    if (rSnap.exists()) rSnap.forEach(c => { allRecords.push({_key:c.key,...c.val()}); });
+    allRecords.sort((a,b) => (b.timestamp||0) - (a.timestamp||0));
+    const count = allRecords.length;
+    if(dot) dot.classList.add('connected');
+    if(text) text.textContent = 'Firebase connected (● ' + count + ' records)';
+    calcSalary();
+  }, err => {
+    if(text) text.textContent = 'Firebase error: '+err.message;
+    if(area) area.innerHTML = '<div style="text-align:center;padding:40px;color:var(--red)">⚠ '+err.message+'</div>';
+  });
+}
+
+function stopSalaryListeners() {
+  if(_salRecordsListener) { db.ref('packtrack/pt_records').off('value', _salRecordsListener); _salRecordsListener=null; }
+  if(_salEmpsListener)    { db.ref('hr_employees').off('value', _salEmpsListener); _salEmpsListener=null; }
+}
+
+function calcSalary() {
+  if (!salDrpFrom||!salDrpTo) initSalDrp();
+  const empId = document.getElementById('sal-emp').value;
+  let recs = allRecords.filter(r => r.date>=salDrpFrom && r.date<=salDrpTo);
+  if (empId) recs = recs.filter(r => r.empId===empId);
+  const area = document.getElementById('sal-result');
+  if (!recs.length) {
+    area.innerHTML='<div style="text-align:center;padding:40px;color:var(--muted)">No records found for this period</div>';
+    return;
+  }
+  const grandTotal = recs.reduce((s,r) => s+r.earnings, 0);
+  const byEmp = {};
+  recs.forEach(r => { if(!byEmp[r.empId]) byEmp[r.empId]=[]; byEmp[r.empId].push(r); });
+  let html = '';
+  if (!empId) html += `<div class="sal-result-card"><div><div class="sr-name">All Employees</div><div class="sr-meta">${recs.length} records · ${salDrpFrom} to ${salDrpTo}</div></div><div><div class="sr-total-label">Grand Total</div><div class="sr-total">${fmt(grandTotal)}</div></div></div>`;
+  Object.keys(byEmp).forEach(eid => {
+    const emp = Object.values(allEmployees).find(e => e.id===eid);
+    const er  = byEmp[eid].sort((a,b) => b.timestamp-a.timestamp);
+    const et  = er.reduce((s,r) => s+r.earnings, 0);
+    const byWT = {};
+    er.forEach(r => { if(!byWT[r.workType]) byWT[r.workType]=0; byWT[r.workType]+=r.earnings; });
+    const cardId = 'sal-card-'+eid;
+    html += `
+      <div class="sal-result-card" onclick="toggleSalCard('${cardId}')" style="cursor:pointer;user-select:none;">
+        <div>
+          <div class="sr-name">${emp?.name||eid}</div>
+          <div class="sr-meta">${er.length} records · ${salDrpFrom} to ${salDrpTo}</div>
+          <div class="sr-badges">${Object.keys(byWT).map(wt=>`<span class="badge badge-orange">${wt}: ${fmt(byWT[wt])}</span>`).join('')}</div>
+        </div>
+        <div style="display:flex;align-items:center;gap:16px;">
+          <div><div class="sr-total-label">Total Salary</div><div class="sr-total">${fmt(et)}</div></div>
+          <div id="${cardId}-chevron" style="font-size:18px;color:var(--muted);transition:transform .25s;">▼</div>
+        </div>
+      </div>
+      <div id="${cardId}" style="display:none;margin-bottom:24px;">
+        <div class="card">
+          <div class="card-header"><h3>${emp?.name||eid}</h3><span style="font-size:12px;color:var(--muted)">${er.length} records</span></div>
+          <div class="tbl-wrap"><table><thead><tr><th>Date</th><th>Product</th><th>Work Type</th><th>Qty</th><th>RP Unit</th><th>CTN PACKSIZE (Ninso)</th><th>CTN RP</th><th>Rate</th><th>Earnings</th><th>Time</th><th>Actions</th></tr></thead>
+          <tbody>${er.map(r=>`<tr>
+            <td style="font-family:var(--mono);font-size:12px">${r.date}</td>
+            <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.productName||''}</td>
+            <td><span class="badge badge-orange">${r.workType}</span></td>
+            <td style="font-family:var(--mono)">${r.qty}</td>
+            <td style="font-family:var(--mono);font-size:12px">${salaryProductField(r,'RP_UNIT')}</td>
+            <td style="font-family:var(--mono);font-size:12px">${salaryProductField(r,'PACKSIZE_NINSO')}</td>
+            <td style="font-family:var(--mono);font-size:12px">${salaryCtnRp(r)}</td>
+            <td style="font-family:var(--mono);font-size:12px">${(r.rate||0).toFixed(3)}</td>
+            <td style="font-family:var(--mono);color:var(--green);font-weight:700">${fmt(r.earnings)}</td>
+            <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${new Date(r.timestamp).toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'})}</td>
+            <td><div style="display:flex;gap:5px;">
+              <button onclick="event.stopPropagation();openRecordEdit('${r._key}')" style="padding:4px 10px;border:1px solid var(--border);border-radius:6px;background:var(--surface);font-size:11px;font-weight:600;cursor:pointer;white-space:nowrap;">✏ Edit</button>
+              <button onclick="event.stopPropagation();deleteRecord('${r._key}')" style="padding:4px 8px;border:1px solid rgba(248,81,73,.4);border-radius:6px;background:var(--red-bg);font-size:11px;font-weight:600;cursor:pointer;color:var(--red);">&#x1F5D1;</button>
+            </div></td>
+          </tr>`).join('')}</tbody></table></div>
+        </div>
+      </div>`;
+  });
+  area.innerHTML = html;
+}
+
+function toggleSalCard(id) {
+  const panel = document.getElementById(id);
+  const chevron = document.getElementById(id+'-chevron');
+  if (!panel) return;
+  const isOpen = panel.style.display !== 'none';
+  panel.style.display = isOpen ? 'none' : 'block';
+  if (chevron) chevron.style.transform = isOpen ? '' : 'rotate(180deg)';
+}
+
+// Product packing fields used by the salary report. Older records only keep
+// the barcode/product name, so resolve the matching product at render time.
+function getSalaryProduct(r) {
+  const barcode = String(r.barcode||'');
+  const name = String(r.productName||'');
+  return Object.values(allProducts).find(p =>
+    String(p.BARCODE||p.barcode||'') === barcode ||
+    String(p.NAME||p.name||'') === name
+  ) || {};
+}
+
+function salaryProductField(r, field) {
+  const p = getSalaryProduct(r);
+  return p[field] ?? p[field.toLowerCase()] ?? '-';
+}
+
+function salaryCtnRp(r) {
+  const qty = parseFloat(r.qty) || 0;
+  const packsizeNinso = parseFloat(salaryProductField(r,'PACKSIZE_NINSO')) || 0;
+  return packsizeNinso > 0 ? (qty / packsizeNinso).toFixed(2) : '-';
+}
+
+function exportSalaryCSV() {
+  if (!salDrpFrom||!salDrpTo) return;
+  const empId = document.getElementById('sal-emp').value;
+  let recs = allRecords.filter(r => r.date>=salDrpFrom && r.date<=salDrpTo);
+  if (empId) recs = recs.filter(r => r.empId===empId);
+  if (!recs.length) { toast('No records to export','error'); return; }
+  const header = 'Date,Employee,Product,Work Type,Qty,RP Unit,CTN PACKSIZE (Ninso),CTN RP,Rate,Earnings,Time,Actions';
+  const rows = recs.map(r => {
+    const emp = Object.values(allEmployees).find(e => e.id===r.empId);
+    const csv = v => `"${String(v??'').replace(/"/g,'""')}"`;
+    return `${r.date},${csv(emp?.name||r.empId)},${csv(r.productName||'')},${r.workType},${r.qty},${csv(salaryProductField(r,'RP_UNIT'))},${csv(salaryProductField(r,'PACKSIZE_NINSO'))},${salaryCtnRp(r)},${(r.rate||0).toFixed(3)},${(r.earnings||0).toFixed(2)},${new Date(r.timestamp).toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'})},Edit`;
+  });
+  const blob = new Blob([[header,...rows].join('\n')], {type:'text/csv'});
+  const a = document.createElement('a'); a.href=URL.createObjectURL(blob);
+  a.download=`salary_${salDrpFrom}_${salDrpTo}.csv`; a.click();
+  toast('⬇ CSV exported');
+}
+
+// ── Record Edit / Delete ────────────────────────────────────────────────────────────
+function openRecordEdit(key) {
+  const rec = allRecords.find(r => r._key===key);
+  if (!rec) { toast('Record not found','error'); return; }
+  document.getElementById('rec-edit-key').value = key;
+  document.getElementById('rec-edit-sub').textContent = rec.productName+' — '+rec.date;
+  // employee dropdown
+  const emps = Object.values(allEmployees);
+  document.getElementById('re-emp').innerHTML = emps.map(e=>`<option value="${e.id}"${e.id===rec.empId?' selected':''}>${e.name}</option>`).join('');
+  // date
+  document.getElementById('re-date').value = rec.date;
+  // product dropdown
+  const prods = Object.values(allProducts);
+  document.getElementById('re-product').innerHTML = prods.map(p=>{
+    const bc = p.BARCODE||p.barcode||'';
+    const nm = p.NAME||p.name||'';
+    const sel = (bc===(rec.barcode||''))||nm===rec.productName ? 'selected' : '';
+    return `<option value="${bc}" data-name="${nm}" ${sel}>${nm}</option>`;
+  }).join('');
+  // work type
+  document.getElementById('re-wt').innerHTML = WORK_TYPES.map(wt=>`<option value="${wt.code}"${wt.code===rec.workType?' selected':''}>${wt.code} — ${wt.name}</option>`).join('');
+  document.getElementById('re-qty').value  = rec.qty;
+  document.getElementById('re-rate').value = (rec.rate||0).toFixed(3);
+  updateReEarn();
+  // update rate when wt changes
+  document.getElementById('re-wt').onchange = function() {
+    document.getElementById('re-rate').value = (prices[this.value]||0).toFixed(3);
+    updateReEarn();
+  };
+  document.getElementById('re-qty').oninput = updateReEarn;
+  document.getElementById('re-err').textContent = '';
+  openModal('rec-edit-modal');
+}
+
+function updateReEarn() {
+  const qty  = parseFloat(document.getElementById('re-qty').value)||0;
+  const rate = parseFloat(document.getElementById('re-rate').value)||0;
+  document.getElementById('re-earn-preview').textContent = fmt(qty*rate);
+}
+
+async function saveRecordEdit() {
+  const key  = document.getElementById('rec-edit-key').value;
+  const empId= document.getElementById('re-emp').value;
+  const date = document.getElementById('re-date').value;
+  const wt   = document.getElementById('re-wt').value;
+  const qty  = parseFloat(document.getElementById('re-qty').value)||0;
+  const rate = parseFloat(document.getElementById('re-rate').value)||0;
+  const selProd = document.getElementById('re-product');
+  const barcode = selProd.value;
+  const productName = selProd.options[selProd.selectedIndex]?.dataset.name||'';
+  const err  = document.getElementById('re-err');
+  if (!date||!wt||qty<=0) { err.textContent='Fill in all fields'; return; }
+  const emp = Object.values(allEmployees).find(e => e.id===empId);
+  const updates = { empId, empName:emp?.name||empId, date, workType:wt, qty, rate, earnings:qty*rate, barcode, productName, timestamp:allRecords.find(r=>r._key===key)?.timestamp||Date.now() };
+  try {
+    await db.ref('packtrack/pt_records/'+key).update(updates);
+    const idx = allRecords.findIndex(r=>r._key===key);
+    if(idx>=0) allRecords[idx] = {...allRecords[idx],...updates};
+    closeModal('rec-edit-modal');
+    calcSalary();
+    toast('✓ Record updated');
+  } catch(e) { err.textContent='Save error: '+e.message; }
+}
+
+async function deleteRecord(key) {
+  const rec = allRecords.find(r => r._key===key);
+  if (!confirm(`Delete record for ${rec?.productName||key}?\n${fmt(rec?.earnings||0)} on ${rec?.date}`)) return;
+  try {
+    await db.ref('packtrack/pt_records/'+key).remove();
+    allRecords = allRecords.filter(r => r._key!==key);
+    calcSalary();
+    toast('🗑 Record deleted');
+  } catch(e) { toast('Delete error: '+e.message,'error'); }
+}
+
+// ── All Records ───────────────────────────────────────────────────────────────
+function renderRecordFilters() {
+  const emps = Object.values(allEmployees);
+  document.getElementById('rec-emp').innerHTML = '<option value="">All</option>'+emps.map(e=>`<option value="${e.id}">${e.name}</option>`).join('');
+  document.getElementById('rec-wt').innerHTML = '<option value="">All</option>'+WORK_TYPES.map(wt=>`<option value="${wt.code}">${wt.code} — ${wt.name}</option>`).join('');
+  document.getElementById('rec-date').value = '';
+}
+
+function filterRecords() {
+  const empId = document.getElementById('rec-emp').value;
+  const date = document.getElementById('rec-date').value;
+  const wt = document.getElementById('rec-wt').value;
+  let recs = allRecords;
+  if (empId) recs = recs.filter(r => r.empId===empId);
+  if (date) recs = recs.filter(r => r.date===date);
+  if (wt) recs = recs.filter(r => r.workType===wt);
+  document.getElementById('rec-count').textContent = recs.length+' records · Total: '+fmt(recs.reduce((s,r)=>s+r.earnings,0));
+  document.getElementById('rec-tbody').innerHTML = recs.slice(0,200).map(r =>
+    `<tr>
+      <td style="font-family:var(--mono);font-size:12px">${r.date||''}</td>
+      <td><span class="emp-av">${(r.empName||'?')[0]}</span>${r.empName||r.empId}</td>
+      <td style="max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.productName||''}</td>
+      <td><span class="badge badge-orange">${r.workType}</span></td>
+      <td style="font-family:var(--mono)">${r.qty}</td>
+      <td style="font-family:var(--mono);font-size:12px">${(r.rate||0).toFixed(3)}</td>
+      <td style="font-family:var(--mono);color:var(--green);font-weight:700">${fmt(r.earnings)}</td>
+      <td style="font-family:var(--mono);font-size:11px;color:var(--muted)">${new Date(r.timestamp).toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'})}</td>
+    </tr>`
+  ).join('');
+}
+
+// ── Modals ────────────────────────────────────────────────────────────────────
+function openModal(id) {
+  document.getElementById(id).classList.add('open');
+  if (id==='prod-import-modal') {
+    prodImportData=[];
+    document.getElementById('prod-csv-input').value='';
+    document.getElementById('prod-import-preview').classList.add('hidden');
+    document.getElementById('prod-import-btn').classList.add('hidden');
+    document.getElementById('prod-import-count').textContent='';
+    document.getElementById('prod-import-list').innerHTML='';
+  }
+  if (id==='emp-import-modal') {
+    empImportData=[];
+    document.getElementById('emp-csv-input').value='';
+    document.getElementById('emp-import-preview').classList.add('hidden');
+    document.getElementById('emp-import-btn').classList.add('hidden');
+  }
+}
+function closeModal(id) {
+  document.getElementById(id).classList.remove('open');
+  // Reset CSV import state when closing import modals
+  if (id==='emp-import-modal') {
+    document.getElementById('emp-import-preview').classList.add('hidden');
+    document.getElementById('emp-import-btn').classList.add('hidden');
+    empImportData = [];
+  }
+  if (id==='prod-import-modal') {
+    document.getElementById('prod-import-preview').classList.add('hidden');
+    document.getElementById('prod-import-btn').classList.add('hidden');
+    prodImportData = [];
+  }
+}
+// Close modal on overlay click
+document.querySelectorAll('.modal-overlay').forEach(o => o.addEventListener('click', e => { if(e.target===o) o.classList.remove('open'); }));
+
+// ── File Input Helpers ───────────────────────────────────────────────────────
+function triggerProdFile(){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='.csv,.txt';
+  inp.style.cssText='position:fixed;top:-999px;left:-999px;opacity:0';
+  document.body.appendChild(inp);
+  inp.addEventListener('change', function(){
+    handleProdCSV(this);
+    document.body.removeChild(inp);
+  });
+  inp.click();
+}
+function triggerEmpFile(){
+  const inp = document.createElement('input');
+  inp.type='file'; inp.accept='.csv,.txt';
+  inp.style.cssText='position:fixed;top:-999px;left:-999px;opacity:0';
+  document.body.appendChild(inp);
+  inp.addEventListener('change', function(){
+    handleEmpCSV(this);
+    document.body.removeChild(inp);
+  });
+  inp.click();
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+function toast(msg, type='success') {
+  const tw = document.getElementById('toast-wrap');
+  const t = document.createElement('div');
+  t.className = 'toast t-'+type; t.textContent = msg; tw.appendChild(t);
+  setTimeout(() => t.classList.add('show'), 10);
+  setTimeout(() => { t.classList.remove('show'); setTimeout(()=>t.remove(),300); }, 3500);
+}
+
+// ── Keyboard ──────────────────────────────────────────────────────────────────
+document.getElementById('l-pass').addEventListener('keypress', e => { if(e.key==='Enter') doLogin(); });
+
+// ── Attendance Settings ─────────────────────────────────────────────────────
+let allHrEmployees = {}; // full hr_employees list for attendance
+
+function renderAttSettings() {
+  const tbody = document.getElementById('atts-tbody');
+  if (!tbody) return;
+  const emps = Object.entries(allHrEmployees)
+    .filter(([k]) => k !== 'ADMIN')
+    .sort((a,b) => a[0].localeCompare(b[0]));
+  tbody.innerHTML = emps.map(([key, emp]) => {
+    const checked = emp.requiresClockin === true;
+    const dept = emp.department || '-';
+    return `<tr>
+      <td><span class="emp-av">${(emp.name||key)[0]}</span>${emp.name||key}</td>
+      <td style="font-family:var(--mono);color:var(--muted)">${key}</td>
+      <td style="font-size:12px;color:var(--muted)">${dept}</td>
+      <td style="text-align:center">
+        <label style="display:inline-flex;align-items:center;cursor:pointer;gap:8px">
+          <input type="checkbox" data-empkey="${key}" ${checked?'checked':''}
+            onchange="toggleRequiresClockin('${key}', this.checked)"
+            style="width:18px;height:18px;accent-color:var(--accent);cursor:pointer">
+          <span style="font-size:12px;font-weight:700;color:${checked?'var(--green)':'var(--muted)'}">${checked?'ON':'OFF'}</span>
+        </label>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+async function toggleRequiresClockin(empKey, value) {
+  try {
+    await db.ref('hr_employees/'+empKey+'/requiresClockin').set(value);
+    allHrEmployees[empKey].requiresClockin = value;
+    renderAttSettings();
+    const badge = document.getElementById('atts-saved-badge');
+    badge.classList.remove('hidden');
+    setTimeout(() => badge.classList.add('hidden'), 2000);
+    toast((allHrEmployees[empKey]?.name||empKey) + ': clock-in ' + (value?'required':'not required'));
+  } catch(e) { toast('Save failed: '+e.message,'error'); }
+}
+
+function loadAttSettings() {
+  db.ref('hr_employees').on('value', snap => {
+    allHrEmployees = {};
+    if (snap.exists()) snap.forEach(c => { allHrEmployees[c.key] = c.val(); });
+    renderAttSettings();
+  });
+}
+
+// ── Daily Attendance Check ────────────────────────────────────────────────────
+function initAttendancePage() {
+  const inp = document.getElementById('att-date');
+  if (!inp.value) {
+    inp.value = localDateStr(new Date());
+  }
+  runAttendanceCheck();
+}
+
+async function runAttendanceCheck() {
+  const dateStr = document.getElementById('att-date').value;
+  const loadEl  = document.getElementById('att-loading');
+  const okEl    = document.getElementById('att-ok-msg');
+  const statsEl = document.getElementById('att-stats');
+  if (!dateStr) { loadEl.textContent = 'Select a date to check attendance.'; return; }
+
+  loadEl.textContent = 'Checking...';
+  loadEl.style.display = 'block';
+  okEl.classList.add('hidden');
+  document.getElementById('att-absent-card').style.display = 'none';
+  document.getElementById('att-nocout-card').style.display = 'none';
+  statsEl.innerHTML = '';
+
+  try {
+    // Get required employees
+    const empSnap = await db.ref('hr_employees').once('value');
+    const required = [];
+    if (empSnap.exists()) empSnap.forEach(c => {
+      const e = c.val();
+      if (c.key !== 'ADMIN' && e.requiresClockin === true && e.active !== false) {
+        required.push({key: c.key, ...e});
+      }
+    });
+
+    if (!required.length) {
+      loadEl.textContent = 'No employees have clock-in required. Enable them in Att. Settings.';
+      statsEl.innerHTML = `<div class="stat"><div class="stat-label">Required Employees</div><div class="stat-value">0</div><div class="stat-sub">Go to Att. Settings to enable</div></div>`;
+      return;
+    }
+
+    // Get records for the date
+    const clockedIn  = {}; // empId -> record
+    const clockedOut = {}; // empId -> true
+    for (const emp of required) {
+      const recSnap = await db.ref('records/'+emp.key).orderByChild('date').equalTo(dateStr).once('value');
+      if (recSnap.exists()) {
+        recSnap.forEach(c => {
+          const r = c.val();
+          if (r.clockIn) {
+            clockedIn[emp.key] = r;
+            if (r.clockOut) clockedOut[emp.key] = true;
+          }
+        });
+      }
+    }
+
+    const absent    = required.filter(e => !clockedIn[e.key]);
+    const noClkOut  = required.filter(e => clockedIn[e.key] && !clockedOut[e.key]);
+    const present   = required.filter(e => clockedIn[e.key] && clockedOut[e.key]);
+
+    // Stats
+    statsEl.innerHTML = `
+      <div class="stat"><div class="stat-label">Required</div><div class="stat-value">${required.length}</div><div class="stat-sub">${dateStr}</div></div>
+      <div class="stat"><div class="stat-label">Present &#10003;</div><div class="stat-value green">${present.length}</div><div class="stat-sub">Clocked in &amp; out</div></div>
+      <div class="stat"><div class="stat-label">Absent &#9888;</div><div class="stat-value" style="color:var(--red)">${absent.length}</div><div class="stat-sub">No clock-in</div></div>
+      <div class="stat"><div class="stat-label">Missing Out</div><div class="stat-value accent">${noClkOut.length}</div><div class="stat-sub">Clock-in only</div></div>
+    `;
+
+    loadEl.style.display = 'none';
+
+    if (!absent.length && !noClkOut.length) {
+      okEl.classList.remove('hidden');
+      return;
+    }
+
+    // Absent table
+    if (absent.length) {
+      document.getElementById('att-absent-card').style.display = '';
+      document.getElementById('att-absent-count').textContent = absent.length + ' employee(s)';
+      document.getElementById('att-absent-tbody').innerHTML = absent.map(e =>
+        `<tr><td><span class="emp-av">${(e.name||e.key)[0]}</span>${e.name||e.key}</td><td style="font-family:var(--mono);color:var(--muted)">${e.key}</td><td style="font-size:12px;color:var(--muted)">${e.department||'-'}</td></tr>`
+      ).join('');
+    }
+
+    // Missing clock-out table
+    if (noClkOut.length) {
+      document.getElementById('att-nocout-card').style.display = '';
+      document.getElementById('att-nocout-count').textContent = noClkOut.length + ' employee(s)';
+      const now = Date.now();
+      document.getElementById('att-nocout-tbody').innerHTML = noClkOut.map(e => {
+        const rec = clockedIn[e.key];
+        const inTime = rec.clockIn ? new Date(rec.clockIn).toLocaleTimeString('en-MY',{hour:'2-digit',minute:'2-digit'}) : '-';
+        const hrs = rec.clockIn ? ((now - rec.clockIn) / 3600000).toFixed(1) : '-';
+        return `<tr><td><span class="emp-av">${(e.name||e.key)[0]}</span>${e.name||e.key}</td><td style="font-family:var(--mono);color:var(--muted)">${e.key}</td><td style="font-family:var(--mono);font-size:12px">${inTime}</td><td style="font-family:var(--mono);color:var(--accent)">${hrs}h</td></tr>`;
+      }).join('');
+    }
+  } catch(err) {
+    loadEl.textContent = 'Error: ' + err.message;
+    loadEl.style.display = 'block';
+  }
+}
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+init();
+</script>
+</body>
+</html>
